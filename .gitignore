@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+
+# 示例与 init 脚手架的录屏产物（体积大，不入库）
+examples/*/audio/*.mp3
+examples/*/audio/*.txt
+examples/*/videos/
+examples/*/out/
+examples/*/diag/
+examples/*/*.mp4
+examples/*/.auth-state.json

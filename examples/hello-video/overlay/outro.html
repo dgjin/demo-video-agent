@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Hello Demo Video · Outro</title>
+<style>
+  :root { --delta: 0s; --bg: #0b1220; --fg: #e8eefc; --dim: #8fa3c8; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
+  body {
+    background: radial-gradient(1100px 680px at 50% 24%, #17253f 0%, var(--bg) 64%);
+    color: var(--fg);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .stage {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 24px;
+  }
+  .anim { opacity: 0; transform: translateY(18px); }
+  body.playing .anim {
+    animation: rise .9s cubic-bezier(.2, .7, .2, 1) forwards;
+    animation-delay: calc(var(--d, 0s) - var(--delta));
+  }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  h1 { font-size: 88px; letter-spacing: 10px; }
+  .lead { font-size: 30px; letter-spacing: 4px; color: var(--dim); }
+  .foot { margin-top: 18px; font-size: 19px; letter-spacing: 3px; color: var(--dim); }
+  #veil {
+    position: fixed; inset: 0; background: var(--bg); z-index: 99;
+    pointer-events: none; opacity: 1; transition: opacity 1s ease 1s;
+  }
+  body.playing #veil { opacity: 0; }
+  .dv-cursor { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <h1 class="anim" style="--d:.5s">示例完成</h1>
+    <p class="lead anim" style="--d:1.4s">文稿 → 配音 → 录屏 → 合成，全链路通过</p>
+    <p class="foot anim" style="--d:2.4s">Demo Video Agent</p>
+  </div>
+  <div id="veil"></div>
+</body>
+</html>

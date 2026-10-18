@@ -1,0 +1,20 @@
+{
+  "name": "demo-video-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Narration-driven demo video pipeline: edge-tts -> Playwright scene recording -> ffmpeg compose",
+  "bin": {
+    "demo-video": "./engine/cli.mjs"
+  },
+  "scripts": {
+    "doctor": "node engine/cli.mjs doctor",
+    "hello": "node engine/cli.mjs all --config examples/hello-video/demo-video.config.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "playwright": "^1.62.0"
+  }
+}

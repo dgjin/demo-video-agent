@@ -1,0 +1,16 @@
+{
+  "name": "demo-video-agent",
+  "displayName": "演示视频制作 Agent",
+  "version": "0.1.0",
+  "description": "Narration-driven demo video production: edge-tts voiceover, Playwright scene recording, ffmpeg compose and frame-level verification.",
+  "descriptionZh": "旁白驱动的演示视频流水线：TTS 配音、Web 操作分幕录屏、overlay 动画校准、ffmpeg 合成与抽帧验收。",
+  "author": {
+    "name": "dgjin"
+  },
+  "logo": "./assets/avatar.svg",
+  "keywords": ["qoder-plugin", "demo-video", "tts", "playwright", "ffmpeg"],
+  "category": "media",
+  "tags": ["skill", "agent", "video"],
+  "skills": "./skills/",
+  "agents": "./agents/"
+}

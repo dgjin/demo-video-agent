@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Hello Demo Video</title>
+<style>
+  :root { --delta: 0s; --bg: #0b1220; --fg: #e8eefc; --dim: #8fa3c8; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
+  body {
+    background: radial-gradient(1200px 700px at 50% 20%, #17253f 0%, var(--bg) 62%);
+    color: var(--fg);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .stage {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 26px;
+  }
+  .anim { opacity: 0; transform: translateY(18px); }
+  body.playing .anim {
+    animation: rise .9s cubic-bezier(.2, .7, .2, 1) forwards;
+    animation-delay: calc(var(--d, 0s) - var(--delta));
+  }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  .badge {
+    font-size: 20px; letter-spacing: 8px; color: #60a5fa;
+    border: 1px solid rgba(96, 165, 250, .35); border-radius: 999px;
+    padding: 10px 26px; background: rgba(96, 165, 250, .08);
+  }
+  h1 {
+    font-size: 104px; letter-spacing: 8px;
+    background: linear-gradient(90deg, #dbeafe, #60a5fa, #a78bfa);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lead { font-size: 34px; letter-spacing: 6px; color: var(--dim); }
+  .hint { margin-top: 16px; font-size: 20px; letter-spacing: 3px; color: var(--dim); }
+  #veil {
+    position: fixed; inset: 0; background: var(--bg); z-index: 99;
+    pointer-events: none; opacity: 1; transition: opacity 1s ease 1s;
+  }
+  body.playing #veil { opacity: 0; }
+  .dv-cursor { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="badge anim" style="--d:.4s">HELLO VIDEO</div>
+    <h1 class="anim" style="--d:1.0s">演示视频流水线</h1>
+    <p class="lead anim" style="--d:1.8s">一个最小可运行示例</p>
+    <p class="hint anim" style="--d:2.8s">TTS · 分幕录屏 · 自动合成</p>
+  </div>
+  <div id="veil"></div>
+</body>
+</html>

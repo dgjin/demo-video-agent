@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>片尾</title>
+<style>
+  /* 约定同 title.html：.stage / .anim + --d / body.playing / --delta / #veil */
+  :root {
+    --delta: 0s;
+    --bg: #0b1220;
+    --fg: #e8eefc;
+    --dim: #8fa3c8;
+    --accent: #60a5fa;
+    --accent2: #a78bfa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
+  body {
+    background: radial-gradient(1100px 680px at 50% 24%, #17253f 0%, var(--bg) 64%);
+    color: var(--fg);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .stage {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 26px;
+  }
+  .anim { opacity: 0; transform: translateY(20px); }
+  body.playing .anim {
+    animation: rise .9s cubic-bezier(.2, .7, .2, 1) forwards;
+    animation-delay: calc(var(--d, 0s) - var(--delta));
+  }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+
+  .badge {
+    font-size: 20px; letter-spacing: 8px; color: var(--accent2);
+    border: 1px solid rgba(167, 139, 250, .38);
+    border-radius: 999px; padding: 10px 26px;
+    background: rgba(167, 139, 250, .08);
+  }
+  h1 { font-size: 92px; letter-spacing: 10px; font-weight: 700; }
+  .lead { font-size: 30px; letter-spacing: 4px; color: var(--dim); }
+  .line {
+    width: 420px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent2), transparent);
+  }
+  .cards { display: flex; gap: 22px; }
+  .card {
+    width: 320px; padding: 24px 28px; border-radius: 16px;
+    border: 1px solid rgba(143, 163, 200, .22);
+    background: rgba(20, 32, 56, .66);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .card b { font-size: 22px; letter-spacing: 2px; }
+  .card span { font-size: 18px; color: var(--dim); line-height: 1.6; }
+  .foot { margin-top: 20px; font-size: 18px; letter-spacing: 3px; color: var(--dim); }
+
+  #veil {
+    position: fixed; inset: 0; background: var(--bg);
+    z-index: 99; pointer-events: none; opacity: 1;
+    transition: opacity 1s ease 1s;
+  }
+  body.playing #veil { opacity: 0; }
+  .dv-cursor { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="badge anim" style="--d:.4s">THANKS FOR WATCHING</div>
+    <h1 class="anim" style="--d:1.0s">谢谢观看</h1>
+    <p class="lead anim" style="--d:1.8s">从文稿到成片，一条流水线一次交付</p>
+    <div class="line anim" style="--d:2.5s"></div>
+    <div class="cards">
+      <div class="card anim" style="--d:3.2s"><b>音画同步</b><span>VTT 句级时间戳驱动操作与动画</span></div>
+      <div class="card anim" style="--d:3.9s"><b>可复现</b><span>配置 + 文稿即源码，重跑结果稳定</span></div>
+      <div class="card anim" style="--d:4.6s"><b>可验收</b><span>抽帧核对每个关键句的画面</span></div>
+    </div>
+    <p class="foot anim" style="--d:5.3s">Demo Video Agent · 示例片尾</p>
+  </div>
+  <div id="veil"></div>
+</body>
+</html>

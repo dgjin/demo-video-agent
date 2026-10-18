@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>片头</title>
+<style>
+  /*
+   * overlay 展示幕约定（录制引擎依赖）：
+   * 1) 必须包含 .stage 容器；2) 动画元素带 .anim 与 --d 设计延迟（相对页面播完时刻）；
+   * 3) body.playing 触发动画；4) --delta 由录制引擎注入（页面加载耗时），用于抵消 delay；
+   * 5) #veil 遮蔽 Chromium 录制首帧残影；6) .dv-cursor 在展示幕中隐藏。
+   *
+   * 校准方法：TTS 生成后读 audio/<幕ID>.vtt 的句级时间戳，
+   * 把每个区块的 --d 设为「该句开始时刻 + 0.3~0.6s」。
+   */
+  :root {
+    --delta: 0s;
+    --bg: #0b1220;
+    --fg: #e8eefc;
+    --dim: #8fa3c8;
+    --accent: #60a5fa;
+    --accent2: #a78bfa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
+  body {
+    background: radial-gradient(1200px 700px at 50% 18%, #16233f 0%, var(--bg) 62%);
+    color: var(--fg);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .stage {
+    position: relative;
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 24px;
+  }
+  .anim { opacity: 0; transform: translateY(20px); }
+  body.playing .anim {
+    animation: rise .9s cubic-bezier(.2, .7, .2, 1) forwards;
+    animation-delay: calc(var(--d, 0s) - var(--delta));
+  }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+
+  .badge {
+    font-size: 20px; letter-spacing: 8px; color: var(--accent);
+    border: 1px solid rgba(96, 165, 250, .35);
+    border-radius: 999px; padding: 10px 26px;
+    background: rgba(96, 165, 250, .08);
+  }
+  h1 {
+    font-size: 96px; font-weight: 700; letter-spacing: 6px;
+    background: linear-gradient(90deg, #dbeafe, var(--accent), var(--accent2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lead { font-size: 34px; letter-spacing: 6px; color: var(--dim); }
+  .line {
+    width: 560px; height: 2px; margin: 10px 0 6px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  .cards { display: flex; gap: 22px; margin-top: 8px; }
+  .card {
+    width: 300px; padding: 26px 28px; border-radius: 16px;
+    border: 1px solid rgba(143, 163, 200, .22);
+    background: rgba(20, 32, 56, .66);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .card b { font-size: 24px; color: var(--fg); letter-spacing: 2px; }
+  .card span { font-size: 19px; color: var(--dim); letter-spacing: 1px; }
+  .hint { margin-top: 18px; font-size: 19px; letter-spacing: 2px; color: var(--dim); }
+
+  /* 首帧残影遮蔽：与背景同色，armed 后 1s 开始、1s 淡出 */
+  #veil {
+    position: fixed; inset: 0; background: var(--bg);
+    z-index: 99; pointer-events: none; opacity: 1;
+    transition: opacity 1s ease 1s;
+  }
+  body.playing #veil { opacity: 0; }
+
+  .dv-cursor { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="badge anim" style="--d:.4s">DEMO VIDEO AGENT</div>
+    <h1 class="anim" style="--d:1.0s">演示视频流水线</h1>
+    <p class="lead anim" style="--d:1.7s">旁白驱动 · 分幕录屏 · 自动合成</p>
+    <div class="line anim" style="--d:2.4s"></div>
+    <div class="cards">
+      <div class="card anim" style="--d:3.0s"><b>01 文稿</b><span>narration.md 分幕旁白</span></div>
+      <div class="card anim" style="--d:3.6s"><b>02 配音</b><span>edge-tts 句级 VTT</span></div>
+      <div class="card anim" style="--d:4.2s"><b>03 录屏</b><span>Playwright 操作编排</span></div>
+      <div class="card anim" style="--d:4.8s"><b>04 合成</b><span>ffmpeg 音画对齐</span></div>
+    </div>
+    <p class="hint anim" style="--d:5.4s">按 VTT 句级时间戳校准，抽帧验收</p>
+  </div>
+  <div id="veil"></div>
+</body>
+</html>
