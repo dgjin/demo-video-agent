@@ -16,6 +16,7 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 
 ## 执行规则
 
+- 制作前先读技能参考 `references/operating-manual.md`，按章节执行并在每章检查点自检。
 - 音频为主时间轴，所有时间点来自 VTT 句级时间戳，不靠字数估算。
 - 真实操作幕每步都要有兜底：`clickLoc` 失败不抛错，关键操作后加最小停留；所有浏览器调用包 `bounded`。
 - 单幕异常按「耗时 × 文件体积 × 日志静默」判定挂起，kill 重录，不原地诊断。

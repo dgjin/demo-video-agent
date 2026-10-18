@@ -60,6 +60,7 @@ node engine/cli.mjs frames  --config ../my-demo/demo-video.config.mjs --at 3,8 -
 
 - 技能 `demo-video-production`：完整工作流、校准公式、故障速查。
 - 子代理 `demo-video-director`：面向「给系统做一个演示视频」的端到端交付。
+- 详细操作手册：[skills/demo-video-production/references/operating-manual.md](skills/demo-video-production/references/operating-manual.md)（环境、示例验收、分幕、校准、录制、验收、排障）。
 
 ## 目录结构
 
@@ -69,6 +70,7 @@ demo-video-agent/
   skills/demo-video-production/
     SKILL.md                       # 工作流与硬性约束
     references/
+      operating-manual.md          # 从零到交付的详细操作手册
       pipeline-reference.md        # 配置、CLI、ctx API、overlay 协议
       calibration-and-pitfalls.md  # 音画校准与踩坑
   agents/demo-video-director.md    # 演示视频导演子代理

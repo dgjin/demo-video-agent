@@ -7,6 +7,8 @@ description: 制作带中文旁白的产品/系统演示视频：分幕旁白文
 
 用「旁白为主时间轴」的流水线把文稿变成成片：**narration.md → edge-tts（mp3 + 句级 VTT）→ Playwright 分幕录屏 → ffmpeg 合成 → 抽帧验收**。
 
+首次使用先读 `references/operating-manual.md`：环境准备、示例验收、分幕设计、逐步制作、验收清单与排障。
+
 ## 适用场景
 
 - 为 Web 系统/产品制作演示讲解视频（含真实操作录屏）
@@ -130,7 +132,7 @@ node <plugin>/engine/cli.mjs frames --config ... --at 5,30 --scene m5 --width 12
 | 页面 404 / 旧界面 | 后端旧进程未重启 | 重启服务后再录 |
 | 查询类画面过快/无过程 | 服务端缓存命中 | 录制前走缓存失效入口，并加最小停留时间 |
 
-更细的校准公式与踩坑记录见 `references/calibration-and-pitfalls.md`；配置字段、CLI、scene ctx API 见 `references/pipeline-reference.md`。
+更细的校准公式与踩坑记录见 `references/calibration-and-pitfalls.md`；配置字段、CLI、scene ctx API 见 `references/pipeline-reference.md`；从零到交付的完整步骤与检查表见 `references/operating-manual.md`。
 
 ## 完成标准
 
