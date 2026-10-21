@@ -4,7 +4,7 @@
 
 一个 Qoder 专家套件：先做分幕策划与旁白文稿，再走「TTS 配音 → 分幕录屏 → 音画合成 → 抽帧验收」的流水线。安装一次，对所有工作区生效。
 
-套件按岗位组织为两个协作技能：`demo-video-storyboard` 负责讲什么、怎么分幕；`demo-video-production` 负责把文稿做成可验收的成片。源自真实产品演示片的工程实践（多幕、十余分钟成片），抽取为通用工具：声明式配置 + 可插拔场景函数，内置音画对齐、首帧遮蔽、挂起判据、多音字修正等踩坑经验。画面源支持三类幕：overlay 动画展示页、真实操作录屏、素材导入（App 真机录屏 / 实拍 / 渲染 / 截图序列）。
+套件按岗位组织为两个协作技能：`demo-video-storyboard` 负责讲什么、怎么分幕；`demo-video-production` 负责把文稿做成可验收的成片。源自真实产品演示片的工程实践（多幕、十余分钟成片），抽取为通用工具：声明式配置 + 可插拔场景函数，内置音画对齐、首帧遮蔽、挂起判据、多音字修正等踩坑经验。画面源支持四类幕：overlay 动画展示页、真实操作录屏、素材导入（App 真机录屏 / 实拍 / 渲染 / 截图序列）、终端回放（asciinema `.cast`）。
 
 ## 安装（Qoder 插件）
 
@@ -31,9 +31,13 @@ node "$DV_ROOT/engine/cli.mjs" doctor
 - **分幕策划**：现场勘察、幕结构、narration.md 写作规范与时长预算，产出可直接制作的文稿与幕清单。
 - **音频为主时间轴**：每幕时长取 TTS 实测值，视频不足 tpad 冻帧补齐、超长裁尾。
 - **句级 VTT 对齐**：edge-tts 输出句级字幕，作为 `at()` / `--d` 的唯一校准源。
-- **三类幕**：overlay 动画展示页（片头/片尾/导览）、真实操作幕（Playwright 编排）、素材幕（导入视频/截图）。
+- **四类幕**：overlay 动画展示页（片头/片尾/导览）、真实操作幕（Playwright 编排）、素材幕（导入视频/截图）、终端幕（asciinema 录制回放）。
 - **素材幕**：`scene.asset` 导入已有视频（mp4/webm/mov/gif，自动适配画幅 `fit: 'contain' | 'cover'`）或截图序列（按该幕 VTT 句首自动切换、末图撑到幕尾）——App 真机录屏、实拍、3D 渲染、设计稿直接配旁白出片；纯素材项目无需浏览器。
+- **终端幕**：`scene.terminal` 指向 `asciinema rec` 产出的 `.cast`（v2），自动生成黑底终端回放页并按旁白时长适配倍速（0.25×–4×），支持 SGR 16 色 / 加粗 / 回车覆盖 / 清行清屏；命令行演示不再需要手工录屏对齐。
 - **可彩排、可单幕重录**：`--dry` 每幕 8s 彩排、`--no-record` 只跑操作链、`--scenes` 指定幕。
+- **断点续做**：录屏与合成的分幕产物比输入（配置 / 画面源 / 音频）新时自动跳过，`--force` 强制重做——改一幕只重录一幕。
+- **TTS 并发**：多幕旁白并行合成（`tts.concurrency`，默认 3），长文稿总耗时显著下降。
+- **配置即校验**：`viewport/fps/crf/asset/fit/terminal` 等字段在加载时校验，报错带字段路径与幕 ID。
 - **抽帧验收**：`frames --scene m1 --at 5,30` 按幕内相对时间导出 PNG。
 - **多音字修正**：内置读音词典（命令行 / 重新 / 会计 / 角色…）自动同音替换，字幕按位置还原；`tts.fixes` 可追加或关闭单条。
 - **解说音色可选**：`tts.role`（新闻男声 / 阳光男声 / 沉稳男声 / 温暖女声…）或 `tts.gender`（male / female），单幕还能单独换人；`demo-video voices` 列清单。
@@ -67,6 +71,20 @@ node "$DV_ROOT/engine/cli.mjs" all --config "$DV_ROOT/examples/asset-demo/demo-v
 
 # 产物
 #   examples/asset-demo/out/asset-demo.mp4（m00 三图随三句旁白切换；m01 视频短于旁白时冻帧补齐）
+```
+
+## 快速开始（终端幕）
+
+```bash
+# 录制一个 cast（任意命令行的真实输出）
+asciinema rec demo.cast
+
+# 配置里引用：{ id: 'm01', title: '命令行演示', terminal: 'assets/demo.cast' }
+# 示例：片头 + 终端幕两幕，cast 7.2s 自动适配 8.7s 旁白（约 0.90×），约 16 秒成片
+node "$DV_ROOT/engine/cli.mjs" all --config "$DV_ROOT/examples/terminal-demo/demo-video.config.mjs"
+
+# 产物
+#   examples/terminal-demo/out/terminal-demo.mp4
 ```
 
 ## 新建真实项目
@@ -121,10 +139,14 @@ demo-video-agent/
   engine/
     cli.mjs                        # 命令入口（setup/doctor/init/tts/record/compose/frames/all）
     lib/{deps,tts,record,compose,frames,narration,config,durations,util}.mjs
-    lib/{asset,pronunciation,voices}.mjs # 素材幕、读音修正与音色预设
+    lib/{asset,terminal,pronunciation,voices}.mjs # 素材幕、终端幕、读音修正与音色预设
     templates/project/             # init 脚手架
   examples/hello-video/            # 最小可运行示例（overlay 幕）
   examples/asset-demo/             # 素材幕示例（截图序列 + 视频导入）
+  examples/terminal-demo/          # 终端幕示例（asciinema cast 回放）
+  test/                            # node:test 纯函数单测（npm test）
+  scripts/check.mjs                # 发布一致性自检（npm run check）
+  .github/workflows/ci.yml         # CI：npm ci + test + check + CLI 冒烟
   LICENSE / CHANGELOG.md           # MIT 许可证与版本记录
 ```
 
@@ -146,6 +168,13 @@ MIT，见 [LICENSE](LICENSE)。版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 验证记录
 
+- 0.5.0 工程质量：
+  - `npm test` 56 个单测全过（读音替换还原、素材图切换规划、旁白解析、音色解析、时长解析、限流并发、断点续做判定、配置校验、终端 ANSI 回放与回放页生成）。
+  - `npm run check` 五项自检全过：manifest 字段、版本一致（plugin.json / package.json / CHANGELOG / 技能 frontmatter）、技能/子代理/命令文件齐全、文档子命令与 CLI 一致（11 个）、`DV_ROOT` 定位片段与 `cli.mjs` 同源。
+  - 终端幕端到端：`examples/terminal-demo` 两幕 16.3s 成片；cast 7.2s 自动适配 8.7s 旁白（0.90×），抽帧确认颜色/加粗/逐行出现正常。
+  - 安装副本全链路：在 `/tmp` 用 0.5.0 安装副本跑 `examples/terminal-demo`（`--force`）→ 16.3s 成片，`compose` 复用未变的 m00；终端抽帧无光标蓝点（修复回放页漏写 `.dv-cursor` 隐藏）。
+  - 断点续做实测三态：二次 `record` 跳过、二次 `compose` 复用分幕、`--force` 强制重做。
+  - TTS 并发：两幕并发合成约 2.5s 完成（串行约 4–5s）。
 - 0.4.0 素材幕：`examples/asset-demo` 两幕（截图序列 + 视频导入）全链路 16.8s 成片；三张截图严格按 VTT 句首（0 / 2.708s / 5.690s）切换，6s 视频素材冻帧补齐至 8.1s，doctor 显示 `2 幕（asset 2）`，纯素材项目跳过浏览器加载；`--dry` / `--no-record` 正确跳过素材幕。
 - 离线校验：`validate_qoder_plugin.py` 对源码目录与 `dist/demo-video-agent-0.3.0.zip` 均输出 `OK: no issues found`；`qodercli plugin validate` 输出 `valid and ready to install`，组件为 skills(2) / agents(1) / commands(1)。
 - 本地安装：`qodercli plugin install --scope user` → `demo-video-agent@local v0.3.0`；安装副本含两个技能、角色指令与 `/demo-video` 命令；发布包 139K / 79 个文件（不含 node_modules、音视频与示例产物）。
@@ -157,6 +186,7 @@ MIT，见 [LICENSE](LICENSE)。版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 ## 已知限制
 
 - 真实操作幕需要针对被测系统编写 Playwright 场景函数，无法自动理解任意 UI；素材幕可覆盖「已有视频/截图」的场景（App 真机录屏、实拍、渲染等）。
+- 终端幕不支持全屏 TUI（vim/top 等依赖光标定位的程序）：只处理 SGR 颜色、回车覆盖、退格、清行与清屏，光标移动等 CSI 会被忽略。
 - 素材幕导入视频时丢弃素材原声（合成层仅映射旁白音轨）；竖屏素材默认 contain 留黑边，可配 `fit: 'cover'` 裁切填满。
 - 仅支持旁白音轨；不含背景音乐与系统声音采集。
 - 字幕 VTT 用于校准与交付，不默认烧录进画面。

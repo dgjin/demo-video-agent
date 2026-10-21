@@ -1,12 +1,13 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ensureDir, exec, hasBinary, installHint, log, probeDuration } from './util.mjs';
+import { ensureDir, exec, hasBinary, installHint, isUpToDate, log, probeDuration } from './util.mjs';
 
 /**
  * 音画合成：每幕 webm（无声）+ mp3（旁白）→ mp4，再 concat 拼接为成片。
  * 音频为主时间轴 T = 音频时长；视频不足 T 用 tpad 冻帧补齐，超长裁尾。
+ * 断点续做：分幕 mp4 比 webm/mp3 新时直接复用，只重拼成片；--force 全量重合成。
  */
-export function runCompose(cfg) {
+export function runCompose(cfg, opts = {}) {
   for (const bin of ['ffmpeg', 'ffprobe']) {
     if (!hasBinary(bin)) throw new Error(`缺少 ${bin}：${installHint(bin)}`);
   }
@@ -20,9 +21,15 @@ export function runCompose(cfg) {
     if (!existsSync(v) || !existsSync(a)) {
       throw new Error(`缺少 ${sc.id} 的素材：${!existsSync(v) ? v : a}`);
     }
+    const out = join(cfg.paths.out, `${sc.id}.mp4`);
+    if (!opts.force && isUpToDate(out, [v, a])) {
+      const od = probeDuration(out);
+      log('compose', `${sc.id}: 复用已合成片段 ${od.toFixed(1)}s（--force 重合成）`);
+      total += od;
+      continue;
+    }
     const vd = probeDuration(v);
     const ad = probeDuration(a);
-    const out = join(cfg.paths.out, `${sc.id}.mp4`);
     exec('ffmpeg', [
       '-y', '-i', v, '-i', a,
       '-filter_complex', `[0:v]tpad=stop_mode=clone:stop_duration=${padSeconds},fps=${cfg.fps}[v]`,

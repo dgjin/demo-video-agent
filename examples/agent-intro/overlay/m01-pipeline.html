@@ -76,8 +76,11 @@
     font-size: 30px; letter-spacing: 12px; color: #405a76; opacity: 0;
   }
   body.playing .overview {
+    /* 入场时刻统一走 --d 变量（重校准脚本只认这一种写法） */
+    --d: .85s;
+    --d2: 2.95s;
     animation: rise .8s cubic-bezier(.2,.7,.2,1) forwards, out .45s ease forwards;
-    animation-delay: calc(.85s - var(--delta)), calc(2.95s - var(--delta));
+    animation-delay: calc(var(--d) - var(--delta)), calc(var(--d2) - var(--delta));
   }
   @keyframes out { to { opacity: 0; } }
 </style>

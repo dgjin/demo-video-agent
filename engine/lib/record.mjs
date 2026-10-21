@@ -1,11 +1,12 @@
 import { existsSync, renameSync, statSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runAssetScene } from './asset.mjs';
 import { selectScenes } from './config.mjs';
 import { ensurePlaywright } from './deps.mjs';
 import { readDurations } from './durations.mjs';
-import { bounded, ensureDir, log, probeDuration } from './util.mjs';
+import { prepareTerminalScene } from './terminal.mjs';
+import { bounded, ensureDir, isUpToDate, log, probeDuration } from './util.mjs';
 
 /**
  * Playwright 解析顺序：被录制项目自身的依赖 > 插件自身依赖（缺失时自动安装）。
@@ -153,7 +154,8 @@ export async function hoverText(page, text, holdMs = 380) {
 
 /** 录制纯展示 HTML 幕：等 .stage 就绪 → 注入加载耗时 --delta → body.playing 触发动画 */
 async function armOverlay(cfg, page, sc, t0) {
-  const file = join(cfg.projectDir, sc.overlay);
+  // terminal 幕传入的是已生成的临时回放页绝对路径，overlay 幕为项目内相对路径
+  const file = isAbsolute(sc.overlay) ? sc.overlay : join(cfg.projectDir, sc.overlay);
   if (!existsSync(file)) throw new Error(`${sc.id} 的 overlay 不存在：${file}`);
   await bounded(page.goto(pathToFileURL(file).href, { waitUntil: 'load', timeout: 15000 }), 20000);
   await bounded(page.waitForSelector('.stage', { timeout: 8000 }), 9000);
@@ -238,7 +240,7 @@ async function recordScene(cfg, chromium, sc, targetMs, opts) {
       ]);
       if (result === TIMEOUT) step(`${sc.id} 场景函数超时（>${(targetMs / 1000) | 0}+120s），关闭浏览器中止`);
     } else {
-      throw new Error(`${sc.id} 需要 overlay、run() 或 asset`);
+      throw new Error(`${sc.id} 需要 overlay、run()、asset 或 terminal`);
     }
 
     const remain = targetMs - (Date.now() - t0);
@@ -275,10 +277,36 @@ async function recordScene(cfg, chromium, sc, targetMs, opts) {
 }
 
 /**
+ * 该幕的输入文件集合：配置/文稿 + 画面源（overlay 及其 base.css、asset 素材）
+ * + 音频时间轴（mp3/vtt）。任一输入比录屏产物新，就说明需要重录。
+ */
+function sceneInputFiles(cfg, sc) {
+  const files = [cfg.configPath, join(cfg.projectDir, cfg.narration)];
+  if (sc.overlay) {
+    const overlay = join(cfg.projectDir, sc.overlay);
+    files.push(overlay);
+    const base = join(dirname(overlay), 'base.css');
+    if (existsSync(base)) files.push(base);
+  }
+  if (sc.asset) {
+    for (const f of Array.isArray(sc.asset) ? sc.asset : [sc.asset]) {
+      files.push(isAbsolute(f) ? f : join(cfg.projectDir, f));
+    }
+  }
+  if (sc.terminal) {
+    files.push(isAbsolute(sc.terminal) ? sc.terminal : join(cfg.projectDir, sc.terminal));
+  }
+  // 音频重新合成过（时长可能变化）就必须重录/重转码，保证画面对齐新时间轴
+  files.push(join(cfg.paths.audio, `${sc.id}.mp3`), join(cfg.paths.audio, `${sc.id}.vtt`));
+  return files;
+}
+
+/**
  * 分幕录制。
- * opts: { scenes?: string[], dry?: boolean, noRecord?: boolean }
+ * opts: { scenes?: string[], dry?: boolean, noRecord?: boolean, force?: boolean }
  *   dry      每幕固定 8s（DUR 彩排），不要求先跑 TTS
  *   noRecord 只跑操作链不录视频（替代原 NOREC）
+ *   force    忽略已有产物强制重录（断点续做默认跳过最新的幕）
  * 素材幕（sc.asset）不经浏览器：纯素材项目无需安装 playwright。
  */
 export async function runRecord(cfg, opts = {}) {
@@ -304,6 +332,12 @@ export async function runRecord(cfg, opts = {}) {
     if (!opts.dry && !targetMs) {
       throw new Error(`缺少 ${sc.id} 的 TTS 时长：先运行 demo-video tts --scenes ${sc.id}`);
     }
+    // 断点续做：产物比全部输入新则跳过（--force 强制重录）
+    const dest = join(cfg.paths.videos, `${sc.id}.webm`);
+    if (!opts.dry && !opts.noRecord && !opts.force && isUpToDate(dest, sceneInputFiles(cfg, sc))) {
+      log('record', `${sc.id} 已有最新录屏，跳过（--force 强制重录）`);
+      continue;
+    }
     if (sc.asset) {
       if (opts.dry || opts.noRecord) {
         log('record', `${sc.id} 素材幕跳过${opts.dry ? '（DRY）' : '（NOREC）'}`);
@@ -312,8 +346,13 @@ export async function runRecord(cfg, opts = {}) {
       runAssetScene(cfg, sc, targetMs);
       continue;
     }
+    // 终端幕：先生成自包含回放页，再以伪 overlay 走同一录制链路（彩排同样适用）
+    let scene = sc;
+    if (sc.terminal) {
+      scene = { ...sc, overlay: prepareTerminalScene(cfg, sc, targetMs) };
+    }
     try {
-      await recordScene(cfg, chromium, sc, targetMs, { ...opts, statePath });
+      await recordScene(cfg, chromium, scene, targetMs, { ...opts, statePath });
     } catch (e) {
       if (!opts.noRecord && /Executable doesn't exist|ffmpeg/i.test(e.message)) {
         throw new Error(

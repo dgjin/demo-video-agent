@@ -48,3 +48,4 @@ allowed-tools: [Read, Glob, Grep, Bash, Write, Edit]
 - 依赖缺失先运行 `setup`；TTS 依赖微软在线服务，受限网络用 `DV_TTS_PROXY=http://127.0.0.1:7890,http://127.0.0.1:7891`。
 - 不把账号、令牌、真实业务数据写进文稿、画面或片尾。
 - 细节手册在插件 `skills/demo-video-production/references/` 下。
+- 引擎支持断点续做：录屏与分幕合成未变时自动复用，需要无条件重做时给 `record` / `compose` 加 `--force`。

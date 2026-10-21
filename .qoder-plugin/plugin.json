@@ -1,9 +1,9 @@
 {
   "name": "demo-video-agent",
   "displayName": "演示视频导演 (Demo Video Director)",
-  "version": "0.4.0",
-  "description": "Turn a storyboard script into a narrated demo video: edge-tts voiceover with sentence-level VTT subtitles, Playwright scene recording, asset import (device screen captures, footage, screenshot slides), ffmpeg composition, and frame-by-frame acceptance — audio-first timeline, per-scene re-recording, multiple voices and languages.",
-  "descriptionZh": "把分幕文稿做成带旁白的演示视频：edge-tts 配音（句级 VTT 字幕）、Playwright 分幕录屏、素材导入（真机录屏 / 实拍 / 截图序列按句切换）、ffmpeg 音画合成、逐帧验收；音频为主时间轴，单幕可重录，音色与语言可选。",
+  "version": "0.5.0",
+  "description": "Turn a storyboard script into a narrated demo video: edge-tts voiceover with sentence-level VTT subtitles, Playwright scene recording, asset import (device screen captures, footage, screenshot slides), asciinema terminal replay scenes, ffmpeg composition, and frame-by-frame acceptance — audio-first timeline, resumable recording, per-scene re-recording, multiple voices and languages.",
+  "descriptionZh": "把分幕文稿做成带旁白的演示视频：edge-tts 配音（句级 VTT 字幕）、Playwright 分幕录屏、素材导入（真机录屏 / 实拍 / 截图序列按句切换）、终端幕（asciinema 录制回放）、ffmpeg 音画合成、逐帧验收；音频为主时间轴，断点续做，单幕可重录，音色与语言可选。",
   "author": {
     "name": "dgjin"
   },

@@ -8,7 +8,15 @@ const HEADING = /^##\s*([A-Za-z0-9_-]+)\s*·\s*(.*)$/;
 export function parseNarration(markdown) {
   const scenes = [];
   let cur = null;
+  let inCode = false;
   for (const line of markdown.split(/\r?\n/)) {
+    const t = line.trim();
+    // 围栏代码块整体跳过（含其中的内容），避免示例命令被读进旁白
+    if (t.startsWith('```')) {
+      inCode = !inCode;
+      continue;
+    }
+    if (inCode) continue;
     const m = line.match(HEADING);
     if (m) {
       cur = { id: m[1], title: m[2].trim(), text: '' };
@@ -16,8 +24,7 @@ export function parseNarration(markdown) {
       continue;
     }
     if (!cur) continue;
-    const t = line.trim();
-    if (!t || t.startsWith('#') || t.startsWith('>') || t.startsWith('```') || t === '---') continue;
+    if (!t || t.startsWith('#') || t.startsWith('>') || t === '---') continue;
     cur.text += (cur.text ? ' ' : '') + t;
   }
   return scenes

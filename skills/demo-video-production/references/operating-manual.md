@@ -130,7 +130,7 @@ my-demo/
 2. 写 `narration.md`，确定分幕与每幕时长预算（第 4 章）。
 3. 填 `demo-video.config.mjs`，幕顺序与文稿一一对应（第 5 章）。
 4. 跑 `tts`，拿到真实时长与 VTT（第 6 章）。
-5. 做 overlay 幕（第 7 章）或写真实操作幕 `run(ctx)`（第 8 章）。
+5. 做展示类幕：overlay 页（第 7 章）、素材幕 / 终端幕（7.5–7.6），或写真实操作幕 `run(ctx)`（第 8 章）。
 6. 彩排 → 录制 → 合成 → 抽帧验收（第 9–10 章）。
 7. 按验收清单修正，重复 5–6 步；交付时按第 13 章归档。
 
@@ -142,14 +142,19 @@ my-demo/
 
 ## 3. 分幕设计
 
-### 3.1 两种幕
+### 3.1 四类幕
 
 | 类型 | 配置方式 | 适用场景 | 画面来源 |
 | --- | --- | --- | --- |
 | overlay 展示幕 | `overlay: 'overlay/xxx.html'` | 片头、片尾、过渡、架构图导览、能力总结 | 本地 HTML，动画由引擎触发 |
 | 真实操作幕 | `async run(ctx) { ... }` | 真实界面操作、查询演示、表单流程 | Playwright 操作被测系统 |
+| 素材幕 | `asset: 'assets/xxx.mp4'` | App 真机录屏、实拍、渲染动画、截图序列 | 已有视频/图片，引擎转码适配画幅 |
+| 终端幕 | `terminal: 'assets/xxx.cast'` | CLI/脚本演示、部署与构建过程、运行日志 | asciinema v2 `.cast` 回放成终端画面 |
 
-两者二选一；同一幕不要既写 `overlay` 又写 `run`（引擎优先 `overlay`）。
+四者互斥：同一幕只写一种画面源。`overlay` 与 `run` 同时存在时引擎优先 `overlay`；
+`asset` / `terminal` 与 `overlay` / `run` 并存会在配置校验阶段直接报错。
+
+制作方法：overlay 见第 7 章 7.1–7.4，素材幕与终端幕见 7.5–7.6，真实操作幕见第 8 章。
 
 ### 3.2 幕 ID 与顺序
 
@@ -277,6 +282,7 @@ export default {
     // gender: 'male',   // 或只按性别选；voice 显式指定时优先级最高
     rate: '-4%',
     proxy: process.env.DV_TTS_PROXY ? process.env.DV_TTS_PROXY.split(',') : [],
+    concurrency: 3,       // 多幕并发数；网络受限时调小到 1
     defaultFixes: true,   // 内置词典：命令行 / 重新 / 会计 / 角色…
     fixes: [
       ['一行命令', '一航命令'],   // 追加：必须等长、同音同调
@@ -315,8 +321,12 @@ export default {
 | `tts.role` | `warm` | 角色选音色：warm/lively/news/sunny/steady/youth/dongbei/shaanxi |
 | `tts.gender` | 空 | `male` / `female`（也接受 男 / 女），未指定角色时生效 |
 | `tts.rate` | `-4%` | 语速，负值更慢 |
+| `tts.concurrency` | 3 | 多幕 TTS 并发数；网络受限或频繁 403 时调小 |
 | `tts.defaultFixes` | `true` | 内置多音字词典，仅中文音色生效 |
 | `tts.fixes` | `[]` | 追加/覆盖内置词，`[原文, 同音字]` 等长数组，只改合成文本 |
+| `scenes[i].asset` | 无 | 素材幕：单个视频或图片路径数组（多图按 VTT 句首切换） |
+| `scenes[i].fit` | `contain` | 素材画幅适配：`contain` 等比缩放留黑边 / `cover` 裁切填满 |
+| `scenes[i].terminal` | 无 | 终端幕：asciinema v2 `.cast` 路径 |
 | `compose.crf` | 20 | 18 更清晰、体积更大；暗色渐变多时建议 18 |
 | `compose.padSeconds` | 5 | tpad 冻帧上限，需大于正常的视频-音频差 |
 
@@ -338,6 +348,7 @@ export default {
 - [ ] `node --check demo-video.config.mjs` 通过；
 - [ ] `doctor --config` 能加载配置并显示正确的幕数；
 - [ ] `scenes` 的 `id` 与 `narration.md` 一一对应；
+- [ ] 每幕只写一种画面源（overlay / run / asset / terminal）；
 - [ ] 需要登录的幕标了 `auth: true`，overlay 幕没标；
 - [ ] 密钥、密码来自环境变量，没有硬编码进仓库。
 
@@ -366,6 +377,8 @@ audio/<幕ID>.vtt      句级字幕（校准唯一来源）
 audio/<幕ID>.txt      实际送去合成的文本（含同音替换，排查发音用）
 audio/durations.json  { "m00": 8328, "m01": 3312 }（毫秒，增量合并写入）
 ```
+
+多幕默认按 `tts.concurrency`（默认 3）限流并发合成，日志会打印「并发合成 N 幕」；网络受限时可调小到 1。全部成功后才写 `durations.json`，任一幕失败整体失败（已生成的 mp3/vtt 保留，重跑会覆盖）。
 
 ### 6.2 读 VTT 校准
 
@@ -432,9 +445,9 @@ WEBVTT
 
 ---
 
-## 7. 制作 overlay 展示幕
+## 7. 制作展示类幕（overlay / asset / terminal）
 
-### 7.1 最小可复制模板
+### 7.1 overlay 最小可复制模板
 
 ```html
 <!doctype html>
@@ -510,12 +523,66 @@ WEBVTT
 - 暗色大面积平坦渐变在录屏后可能出现轻微块状伪影；可提高 `compose.crf` 到 18，或给背景加细网格/纹理。详见踩坑文档。
 - 页面固定 1920×1080，`overflow: hidden`；不要依赖滚动。
 
-### 7.5 检查点
+### 7.5 素材幕（asset）
+
+不经过浏览器：把已有视频/图片转成 `videos/<id>.webm`（无声），之后与录屏幕走完全相同的合成与抽帧链路。
+
+```js
+// 单个视频：mp4/webm/mov/mkv/m4v/avi/gif，自动转码为无声 webm
+{ id: 'm3', title: 'App 真机操作', asset: 'assets/phone-demo.mp4' },
+
+// 画幅适配：默认 contain 等比缩放留黑边；cover 裁切填满
+{ id: 'm4', title: '实拍片段', asset: 'assets/b-roll.mov', fit: 'cover' },
+
+// 图片序列：按该幕 VTT 句首切换（首图从 0 起，末图撑到幕尾）
+{ id: 'm5', title: '架构演进', asset: ['assets/step1.png', 'assets/step2.png', 'assets/step3.png'] },
+```
+
+要点：
+
+- 时长由该幕旁白决定：素材超长裁尾，不足由合成层 tpad 冻帧补齐（上限 `compose.padSeconds`）；不要靠重复素材凑时长。
+- 图片多于 VTT 句数时多余图片被忽略（日志提示）；单图则全程定格。
+- 素材幕不需要浏览器，纯素材项目可以不装 Playwright。
+- 素材文件纳入断点续做判断：替换视频/图片后 `record` 会自动重转码。
+
+### 7.6 终端幕（terminal）
+
+把 asciinema v2 格式的 `.cast` 回放成终端画面（黑底窗口 + 标题栏 + 闪烁光标），适合展示 CLI、脚本、构建与部署过程。
+
+```js
+{ id: 'm2', title: '命令行演示', terminal: 'assets/demo.cast' },
+```
+
+录制 cast（本机有 asciinema 时）：
+
+```bash
+asciinema rec assets/demo.cast --overwrite --cols 96 --rows 24
+# 执行要演示的命令，结束后 exit 或 Ctrl-D
+```
+
+要点：
+
+- 只支持行式输出：SGR 颜色/加粗、`\r` 覆盖（字符级，进度条可正常刷新）、`\b`/`\t`、清行清屏；光标定位序列被丢弃，vim/top 这类全屏 TUI 不适用。
+- 回放倍速自动计算：`speed = cast 时长 / (旁白时长 × 0.92)`，clamp 0.25×–4×。cast 明显长于旁白时末尾内容会被幕尾裁掉——加长旁白或精简 cast 尾部。
+- 回放页生成在 `videos/.tmp/<id>-terminal.html`，可直接用浏览器打开核对；`--dry` 也能彩排。
+- 标题栏显示 `scene.title — shell · cast 时长`，shell 取自 cast header 的 `env.SHELL`。
+- cast 文件或旁白变化都会触发该幕重录（断点续做按输入 mtime 判断）。
+
+### 7.7 检查点
+
+overlay 幕：
 
 - [ ] 浏览器直接打开 HTML 时动画不播放（未被 `body.playing` 触发）；
 - [ ] 录制后每个区块出现时刻与旁白句对应；
 - [ ] 首帧无残影、无光标圆点；
 - [ ] 抽帧无文字截断、无重叠。
+
+素材幕 / 终端幕：
+
+- [ ] 抽帧确认画面内容与旁白描述一致（界面状态、数字、命令输出）；
+- [ ] 素材画幅适配正确（contain 无意外裁切、cover 未切掉关键区域）；
+- [ ] 终端幕末尾几行在幕内完整出现，没有被裁掉；
+- [ ] 终端回放页单独打开渲染正常（颜色、光标、换行）。
 
 ---
 
@@ -603,6 +670,9 @@ node "$DV_ROOT/engine/cli.mjs" record --config ../my-demo/demo-video.config.mjs
 # 重录单幕
 node "$DV_ROOT/engine/cli.mjs" record --config ... --scenes m5
 
+# 强制重录（忽略断点续做，无条件重做）
+node "$DV_ROOT/engine/cli.mjs" record --config ... --scenes m5 --force
+
 # 每幕 8s 彩排（不产出可用成片素材）
 node "$DV_ROOT/engine/cli.mjs" record --config ... --dry
 
@@ -611,6 +681,8 @@ node "$DV_ROOT/engine/cli.mjs" record --config ... --no-record
 ```
 
 每幕独立浏览器实例；单幕异常不影响其他幕。录制视频先落在 `videos/.tmp/`，结束后重命名为 `videos/<幕ID>.webm`。
+
+断点续做：`videos/<幕ID>.webm` 比该幕全部输入（配置、`narration.md`、overlay 与 `base.css`、素材/cast、`audio/<幕ID>.mp3` 与 `.vtt`）新时自动跳过，日志打印「已有最新录屏，跳过（--force 强制重录）」。改了画面源或重跑 `tts` 后通常无需手动指定 `--scenes`；只有想无条件重做时才加 `--force`。
 
 ### 9.2 日志解读
 
@@ -673,7 +745,7 @@ node "$DV_ROOT/engine/cli.mjs" compose --config ../my-demo/demo-video.config.mjs
 
 - 以音频为时间轴逐幕编码：H.264（`crf` 默认 20）+ AAC 192k。
 - 视频不足用 tpad 冻帧补齐（上限 `padSeconds`，默认 5s），超长裁尾。
-- 然后 concat 拼接为成片。`compose` 始终全量重编码所有幕，不接受 `--scenes`。
+- 然后 concat 拼接为成片。未变的分幕 mp4 自动复用（日志「复用已合成片段」），`--force` 才全量重合成；`compose` 不接受 `--scenes`。
 - 缺少某幕 webm 或 mp3 会直接报错，按提示补录/补生成。
 
 ### 10.2 抽帧
@@ -711,6 +783,8 @@ node "$DV_ROOT/engine/cli.mjs" frames --config ... --scene m5 --at 8 --width 128
 | --- | --- | --- |
 | 只改 overlay 画面（CSS/文案/布局） | 重录该幕 → compose → 抽帧 | 不影响音频时长 |
 | 改旁白某一句 | `tts --scenes <幕>` → 重录该幕 → compose → 抽帧 | 该幕时长变化，重读 VTT 校准 `at()`/`--d` |
+| 换素材文件（视频/图片） | record → compose → 抽帧 | 自动重转码；时长仍以旁白为准 |
+| 改 cast 文件 | record → compose → 抽帧 | 倍速重新计算，留意末尾是否被裁 |
 | 新增一幕 | 改 narration + config.scenes（插入正确位置）→ tts → record → compose | 幕 ID 唯一；注意新幕对后续幕绝对位置的影响 |
 | 删除一幕 | 从 narration 与 config.scenes 同时移除 → compose | 旧 webm/mp3 可保留或清理 |
 | 换音色/语速 | 全量 tts → 全量 record → compose | 所有幕时长都会变，VTT 全部重读 |
@@ -742,6 +816,10 @@ node "$DV_ROOT/engine/cli.mjs" frames --config ... --scene m5 --at 8 --width 128
 | TTS 连续失败 | 网络/代理 | 配置 `DV_TTS_PROXY`，多写几个代理 |
 | 合成报缺少素材 | 某幕未录或未生成音频 | 补跑 `tts` / `record --scenes <幕>` |
 | `frames` 没有输出 | 时间点超出成片时长 | 用 `--scene` 相对时间，或确认成片时长 |
+| 终端幕画面空白/错位 | 用了全屏 TUI 或光标定位序列 | 改为行式输出脚本；单独打开 `videos/.tmp/<id>-terminal.html` 核对 |
+| 终端幕末尾内容缺失 | cast 比旁白长，被幕尾裁掉 | 加长旁白或精简 cast 尾部后重录 |
+| 素材幕出现黑边/被裁切 | 素材画幅与 viewport 不一致 | 默认 contain 留黑边；要填满改 `fit: 'cover'` |
+| 素材画面提前结束 | 素材短于旁白 | 合成层 tpad 冻帧补齐（上限 `padSeconds`）；或换更长素材 |
 | 成片暗色区域有块状伪影 | VP8 录屏量化 | `compose.crf` 提到 18；避免大面积纯暗渐变；详见踩坑文档 |
 | 中文路径相关异常 | 工具对中文路径兼容性差 | 项目目录尽量用英文；或改用绝对路径配置 |
 
@@ -756,6 +834,7 @@ node "$DV_ROOT/engine/cli.mjs" frames --config ... --scene m5 --at 8 --width 128
 | `narration.md` | 旁白源稿 | 是 |
 | `demo-video.config.mjs` | 配置与场景函数 | 是 |
 | `overlay/*.html` | 展示幕页面 | 是 |
+| `assets/*` | 素材视频/图片、终端 `.cast` | 是（大文件可外链或另存） |
 | `audio/*.vtt` | 句级字幕/校准记录 | 是 |
 | `audio/durations.json` | 各幕时长 | 是 |
 | `audio/*.mp3` | 配音 | 否 |
@@ -792,16 +871,16 @@ node "$DV_ROOT/engine/cli.mjs" init <目录> [--force]
 node "$DV_ROOT/engine/cli.mjs" doctor [--config <cfg>] [--edge-tts <path>]
 
 node "$DV_ROOT/engine/cli.mjs" tts     --config <cfg> [--scenes a,b] [--no-vtt]
-node "$DV_ROOT/engine/cli.mjs" record  --config <cfg> [--scenes a,b] [--dry] [--no-record]
-node "$DV_ROOT/engine/cli.mjs" compose --config <cfg>
+node "$DV_ROOT/engine/cli.mjs" record  --config <cfg> [--scenes a,b] [--dry] [--no-record] [--force]
+node "$DV_ROOT/engine/cli.mjs" compose --config <cfg> [--force]
 node "$DV_ROOT/engine/cli.mjs" frames  --config <cfg> --at 3,8 [--scene m1] [--width 1280]
 
-node "$DV_ROOT/engine/cli.mjs" all     --config <cfg> [--scenes a,b] [--dry] [--no-record] [--at 3,8]
+node "$DV_ROOT/engine/cli.mjs" all     --config <cfg> [--scenes a,b] [--dry] [--no-record] [--force] [--at 3,8]
 ```
 
 `--config` 省略时从当前目录向上查找 `demo-video.config.mjs`（也可用 `DV_CONFIG` 指定）。
 
-`--scenes` 只影响 `tts` 与 `record`；`compose` 始终全量重编码。
+`--scenes` 只影响 `tts` 与 `record`；`--force` 让 record 忽略断点续做重录、让 compose 全量重合成。`compose` 不接受 `--scenes`。
 
 ### 14.2 时间单位
 

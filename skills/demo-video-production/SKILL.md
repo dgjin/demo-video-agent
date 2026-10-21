@@ -1,14 +1,14 @@
 ---
 name: demo-video-production
-description: 负责把分幕文稿制作成带旁白的演示视频：edge-tts 配音与句级 VTT、Playwright 分幕录屏（真实操作幕与 overlay 动画展示页）、素材导入幕（App 真机录屏 / 实拍 / 渲染视频 / 截图序列）、ffmpeg 音画合成与抽帧验收。当用户要求录制演示视频、录屏讲解、demo video、screen recording with voiceover、TTS 配音、字幕对齐、片头片尾动画、重录某一幕、给已有录屏/截图配旁白，或把文档/架构图做成视频时使用。
-description_zh: 旁白驱动的演示视频制作流水线：分幕文稿 → TTS 配音与句级 VTT → 分幕画面（浏览器录屏 / overlay 动画页 / 素材导入）→ ffmpeg 合成 → 抽帧验收，支持任意 Web 系统与多语言配音。
-version: 0.4.0
+description: 负责把分幕文稿制作成带旁白的演示视频：edge-tts 配音与句级 VTT、Playwright 分幕录屏（真实操作幕与 overlay 动画展示页）、素材导入幕（App 真机录屏 / 实拍 / 渲染视频 / 截图序列）、终端幕（asciinema 录制回放）、ffmpeg 音画合成与抽帧验收。当用户要求录制演示视频、录屏讲解、demo video、screen recording with voiceover、TTS 配音、字幕对齐、片头片尾动画、重录某一幕、给已有录屏/截图/命令行录制配旁白，或把文档/架构图做成视频时使用。
+description_zh: 旁白驱动的演示视频制作流水线：分幕文稿 → TTS 配音与句级 VTT → 分幕画面（浏览器录屏 / overlay 动画页 / 素材导入 / 终端回放）→ ffmpeg 合成 → 抽帧验收，支持任意 Web 系统与多语言配音。
+version: 0.5.0
 user-invocable: true
 ---
 
 # 演示视频制作
 
-用「旁白为主时间轴」的流水线把文稿变成成片：**narration.md → edge-tts（mp3 + 句级 VTT）→ 分幕画面 → ffmpeg 合成 → 抽帧验收**。画面源三类：overlay 展示页（Playwright 录制）、真实操作幕（Playwright 编排）、素材幕（导入视频/截图，不经浏览器）。
+用「旁白为主时间轴」的流水线把文稿变成成片：**narration.md → edge-tts（mp3 + 句级 VTT）→ 分幕画面 → ffmpeg 合成 → 抽帧验收**。画面源四类：overlay 展示页（Playwright 录制）、真实操作幕（Playwright 编排）、素材幕（导入视频/截图，不经浏览器）、终端幕（asciinema 录制回放）。
 
 首次使用先读 `references/operating-manual.md`：环境准备、示例验收、分幕设计、逐步制作、验收清单与排障。
 
@@ -36,6 +36,7 @@ echo "$DV_ROOT"
 - 需要 TTS 配音、字幕时间轴、音画严格对齐
 - 把架构图 / 文档页做成带解说的视频
 - 给已有素材配旁白：App 真机录屏、实拍视频、3D 渲染、设计动图、截图序列（素材幕）
+- 给命令行演示配旁白：asciinema 录制（`.cast`）直接回放成终端画面（终端幕）
 
 不适用：剪辑已有实拍素材（不带旁白重配）、复杂特效合成、直播推流。
 
@@ -96,7 +97,7 @@ node "$DV_ROOT/engine/cli.mjs" tts --config my-demo/demo-video.config.mjs
 node "$DV_ROOT/engine/cli.mjs" tts --config my-demo/demo-video.config.mjs --scenes m5   # 只重生成某幕
 ```
 
-产出 `audio/` 下的 mp3、vtt 与 `durations.json`，文件名与幕 ID 相同。edge-tts 对同文本同参数确定性输出，重生成不会改变时长。
+产出 `audio/` 下的 mp3、vtt 与 `durations.json`，文件名与幕 ID 相同。edge-tts 对同文本同参数确定性输出，重生成不会改变时长。多幕默认并行合成（`tts.concurrency`，默认 3）；网络不稳时可调成 1 串行排查。
 
 换解说人：改配置或临时覆盖，例如 `tts --role news`、`tts --gender female`、`tts --voice zh-CN-YunxiNeural`；
 `demo-video voices` 查看全部角色。换音色会改变整幕时长，需重新校准该幕。
@@ -106,6 +107,7 @@ node "$DV_ROOT/engine/cli.mjs" tts --config my-demo/demo-video.config.mjs --scen
 - **overlay 展示幕**（片头/片尾/过渡/架构图导览）：写 HTML，遵守约定——`.stage` 容器、`.anim` + `--d`、`body.playing`、`--delta`、`#veil` 遮罩首帧、`.dv-cursor{display:none}`。
 - **真实操作幕**：在 config 里写 `async run(ctx)`，用 `ctx` 助手编排（见 `references/pipeline-reference.md`）。
 - **素材幕**：`scene.asset` 指向已有视频（mp4/webm/mov/gif，自动适配画幅，`fit: 'contain'` 留黑边 / `'cover'` 裁切填满）或图片数组（按该幕 VTT 句首自动切换，推荐一句一图，末图撑到幕尾）。素材原声不保留；纯素材项目无需浏览器与 playwright。
+- **终端幕**：`scene.terminal` 指向 `asciinema rec demo.cast` 产出的 v2 cast，引擎自动生成终端回放页并按该幕旁白时长适配倍速（0.25×–4×）。支持 SGR 16 色 / 加粗 / 回车覆盖 / 清行清屏；不支持 vim/top 等全屏 TUI。cast 时长与旁白不必相等，引擎会拉伸或压缩。
 - 交互动作不要依赖默认值（数据源下拉、默认 tab 可能因页面而异），显式定位并切换。
 
 ### 5. 校准（VTT → 画面）
@@ -123,7 +125,10 @@ node "$DV_ROOT/engine/cli.mjs" record --config my-demo/demo-video.config.mjs --d
 node "$DV_ROOT/engine/cli.mjs" record --config my-demo/demo-video.config.mjs --no-record      # 只跑操作链（全时长）
 node "$DV_ROOT/engine/cli.mjs" record --config my-demo/demo-video.config.mjs --scenes m5      # 重录单幕
 node "$DV_ROOT/engine/cli.mjs" record --config my-demo/demo-video.config.mjs                  # 正式录制
+node "$DV_ROOT/engine/cli.mjs" record --config my-demo/demo-video.config.mjs --force          # 忽略已有产物强制重录
 ```
+
+断点续做：某幕的 `videos/<id>.webm` 比它的全部输入（配置、overlay/base.css、素材/cast、`audio/<id>.mp3` 与 `.vtt`）新时自动跳过，日志会标注「已有最新录屏，跳过」。因此重跑 `tts` 后相关幕会自动重录，改文稿/画面也只影响对应幕；确实要重做时加 `--force`。
 
 异常判据（任一命中即 kill 重录，不要原地诊断）：
 
@@ -165,6 +170,9 @@ node "$DV_ROOT/engine/cli.mjs" frames --config my-demo/demo-video.config.mjs --a
 | --- | --- | --- |
 | 素材幕画面带黑边 | 素材画幅比与 16:9 不一致（如竖屏录屏） | 默认 contain；改 `fit: 'cover'` 裁切填满，或换图片序列 |
 | 素材幕切换节奏与旁白不符 | 图片数与句数不匹配 | 推荐一句一图；多余图片会被忽略并有日志提示 |
+| 终端幕画面为空/只有一行光标 | cast 内容是全屏 TUI（vim/top）或大量光标定位 | 只支持行式输出；重录为普通命令行输出，避免全屏程序 |
+| 终端幕最后几行没放完 | cast 明显长于该幕旁白 | 加长旁白或精简 cast；引擎最多 4× 加速、超出会被幕尾裁掉 |
+| 成片底部偶发一条灰边 | Chrome 录制窗口尺寸偶发异常（非代码问题） | `record --scenes <id> --force` 重录该幕即可；先抽 `videos/<id>.webm` 确认 |
 | 首帧残影/花屏 | Chromium 录制首帧残留 | 确认 `#veil` 存在且 `body.playing` 后淡出 |
 | 动画整体偏移 | 未注入 `--delta` 或 delay 未减 delta | 检查 armOverlay 与 CSS `calc` |
 | 旁白与操作错位 | 用字数估算时间 | 重读 VTT，按句首 + 0.8–1.0s 校准 |
@@ -180,5 +188,6 @@ node "$DV_ROOT/engine/cli.mjs" frames --config my-demo/demo-video.config.mjs --a
 
 - compose 成功，成片时长 ≈ 各幕音频时长之和（±1s）。
 - 抽帧验收全部通过，无黑帧、无 404、无错位文案。
-- 单幕可独立重录，重录后只需重跑 compose。
+- 单幕可独立重录，重录后只需重跑 compose（compose 也会按输入 mtime 复用未变的分幕）。
 - 仓库只入库源码与 VTT，产物被 gitignore。
+- 维护本插件时：`npm test`（56 个单测）与 `npm run check`（发布一致性自检）全过再发布。

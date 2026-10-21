@@ -18,6 +18,7 @@ const DEFAULTS = {
     role: '',
     gender: '',
     rate: '-4%',
+    concurrency: 3,
     edgeTtsBin: '',
     proxy: [],
     defaultFixes: true,
@@ -28,6 +29,63 @@ const DEFAULTS = {
 };
 
 const CONFIG_NAMES = ['demo-video.config.mjs', 'demo-video.config.js'];
+
+const isPosInt = (v) => Number.isInteger(v) && v > 0;
+
+/**
+ * 配置字段级校验：把错误前置到 loadConfig（而不是等 ffmpeg 报错），
+ * 返回错误列表（空数组表示通过），每条带字段路径。
+ */
+export function validateConfig(cfg) {
+  const errs = [];
+  const add = (path, msg) => errs.push(`${path} ${msg}`);
+  const show = (v) => JSON.stringify(v);
+
+  if (!isPosInt(cfg.viewport?.width)) add('viewport.width', `= ${show(cfg.viewport?.width)}（应为正整数）`);
+  if (!isPosInt(cfg.viewport?.height)) add('viewport.height', `= ${show(cfg.viewport?.height)}（应为正整数）`);
+  if (!isPosInt(cfg.fps) || cfg.fps > 120) add('fps', `= ${show(cfg.fps)}（应为 1–120 的整数）`);
+  if (typeof cfg.finalVideo !== 'string' || !cfg.finalVideo.trim()) add('finalVideo', '应为非空文件名');
+  if (typeof cfg.narration !== 'string' || !cfg.narration.trim()) add('narration', '应为非空路径');
+  if (!Number.isInteger(cfg.compose?.crf) || cfg.compose.crf < 0 || cfg.compose.crf > 51) {
+    add('compose.crf', `= ${show(cfg.compose?.crf)}（应为 0–51 的整数）`);
+  }
+  if (!(Number(cfg.compose?.padSeconds) >= 0)) add('compose.padSeconds', `= ${show(cfg.compose?.padSeconds)}（应为 >= 0 的数字）`);
+  if (!isPosInt(cfg.tts?.concurrency)) add('tts.concurrency', `= ${show(cfg.tts?.concurrency)}（应为正整数）`);
+
+  for (const [k, v] of Object.entries(cfg.dirs || {})) {
+    if (typeof v !== 'string' || !v.trim()) add(`dirs.${k}`, '应为非空目录名');
+  }
+
+  cfg.scenes.forEach((sc, i) => {
+    const at = `scenes[${i}](${sc.id})`;
+    const hasSource = sc.overlay || typeof sc.run === 'function' || sc.asset != null || sc.terminal != null;
+    if (!hasSource) add(at, '缺少画面源：overlay / run() / asset / terminal 四选一');
+    if (sc.overlay !== undefined && (typeof sc.overlay !== 'string' || !sc.overlay.trim())) {
+      add(`${at}.overlay`, '应为 overlay HTML 的相对路径');
+    }
+    if (sc.terminal !== undefined) {
+      if (sc.overlay || typeof sc.run === 'function' || sc.asset != null) {
+        add(`${at}.terminal`, '不能与 overlay / run() / asset 同时使用');
+      }
+      if (typeof sc.terminal !== 'string' || !sc.terminal.trim()) {
+        add(`${at}.terminal`, '应为 .cast 录制文件的相对路径');
+      }
+    }
+    if (sc.asset !== undefined) {
+      if (sc.overlay || typeof sc.run === 'function') {
+        add(`${at}.asset`, '不能与 overlay / run() 同时使用');
+      }
+      const items = Array.isArray(sc.asset) ? sc.asset : [sc.asset];
+      if (!items.length || !items.every((f) => typeof f === 'string' && f.trim())) {
+        add(`${at}.asset`, '应为单个文件路径或非空路径数组');
+      }
+      if (sc.fit !== undefined && !['contain', 'cover'].includes(sc.fit)) {
+        add(`${at}.fit`, `= ${show(sc.fit)}（只能是 'contain' 或 'cover'）`);
+      }
+    }
+  });
+  return errs;
+}
 
 /**
  * 定位项目配置：--config / DV_CONFIG 优先，否则从当前目录向上查找。
@@ -87,6 +145,11 @@ export async function loadConfig(configPath) {
 
   const dup = cfg.scenes.map((s) => s.id).filter((id, i, arr) => arr.indexOf(id) !== i);
   if (dup.length) throw new Error(`config.scenes 幕ID 重复：${[...new Set(dup)].join(', ')}`);
+
+  const errs = validateConfig(cfg);
+  if (errs.length) {
+    throw new Error(`配置校验失败：\n  - ${errs.join('\n  - ')}`);
+  }
 
   return cfg;
 }

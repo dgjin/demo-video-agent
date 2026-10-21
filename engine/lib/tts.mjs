@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { parseNarration } from './narration.mjs';
 import { applyPronunciation, compileFixes, restoreVtt } from './pronunciation.mjs';
 import { readDurationsOrEmpty, writeDurations } from './durations.mjs';
-import { ensureDir, exec, log, probeDuration } from './util.mjs';
+import { ensureDir, exec, execAsync, log, mapLimit, probeDuration } from './util.mjs';
 import { resolveSceneVoice, voiceLabel } from './voices.mjs';
 
 /**
@@ -88,13 +88,13 @@ function resolveProxies(cfg) {
 }
 
 /** 每个代理尝试两轮；直连失败后才回退代理的语义由 proxies 顺序决定 */
-function synthesize(spec, args, proxies) {
+async function synthesize(spec, args, proxies) {
   const plan = proxies.length ? [...proxies, ...proxies] : [null, null];
   let lastErr;
   for (const proxy of plan) {
     try {
       const full = [...spec.args, ...args, ...(proxy ? ['--proxy', proxy] : [])];
-      exec(spec.cmd, full, { timeout: 180000 });
+      await execAsync(spec.cmd, full, { timeout: 180000 });
       return proxy;
     } catch (e) {
       lastErr = e;
@@ -107,9 +107,11 @@ function synthesize(spec, args, proxies) {
 
 /**
  * 为指定幕生成 mp3 + VTT，并把时长写入 audio/durations.json。
- * opts: { scenes?: string[], vtt?: boolean }
+ * 各幕互不依赖，按 tts.concurrency（默认 3）限流并发合成；
+ * 全部成功后才写 durations.json，任一幕失败整体失败（已合成的 mp3/vtt 保留）。
+ * opts: { scenes?: string[], vtt?: boolean, concurrency?: number }
  */
-export function runTts(cfg, opts = {}) {
+export async function runTts(cfg, opts = {}) {
   const bin = resolveEdgeTts(cfg);
   if (!bin) {
     throw new Error('未找到 edge-tts：执行 pip install edge-tts，或配置 tts.edgeTtsBin / 环境变量 EDGE_TTS');
@@ -136,41 +138,49 @@ export function runTts(cfg, opts = {}) {
   const withVtt = opts.vtt !== false;
   // 单幕音色覆盖写在 config.scenes 上，合成时按幕 ID 取回来
   const sceneMeta = new Map(cfg.scenes.map((s) => [s.id, s]));
-
-  for (const sc of wanted) {
-    // 单幕可换角色：scene.voice / scene.role / scene.gender 覆盖全局音色
-    const meta = sceneMeta.get(sc.id) || {};
-    const voice = resolveSceneVoice(cfg.tts, meta) || cfg.tts.voice;
-    // 内置词典 + 项目 tts.fixes（同名覆盖，值为 null 表示关闭该条），按本幕音色判断是否中文
-    const fixes = compileFixes({ ...cfg.tts, voice });
-    const mp3 = join(audioDir, `${sc.id}.mp3`);
-    const vtt = join(audioDir, `${sc.id}.vtt`);
-    const txt = join(audioDir, `${sc.id}.txt`);
-    const { text: spoken, ranges } = applyPronunciation(sc.text, fixes);
-    writeFileSync(txt, spoken, 'utf8');
-
-    const args = ['--voice', voice, '--file', txt, '--write-media', mp3];
-    if (cfg.tts.rate) args.push(`--rate=${cfg.tts.rate}`);
-    if (withVtt) args.push('--write-subtitles', vtt);
-
-    const usedProxy = synthesize(bin, args, proxies);
-
-    if (!existsSync(mp3)) throw new Error(`${sc.id} 未生成 mp3`);
-    const sec = probeDuration(mp3);
-    if (!Number.isFinite(sec) || sec <= 0) throw new Error(`${sc.id} mp3 时长无效`);
-
-    // 合成文本中的同音替换只用于发音，字幕必须还原原文
-    if (withVtt && existsSync(vtt) && ranges.length) {
-      const raw = readFileSync(vtt, 'utf8');
-      const restored = restoreVtt(raw, spoken, ranges);
-      if (restored !== raw) writeFileSync(vtt, restored, 'utf8');
-    }
-
-    durations[sc.id] = Math.round(sec * 1000);
-    const fixed = ranges.length ? ` 读音修正 ${ranges.length} 处` : '';
-    const sceneVoice = voice !== cfg.tts.voice ? ` · ${voiceLabel(voice)}` : '';
-    log('tts', `${sc.id} ${sec.toFixed(1)}s${withVtt ? ' +vtt' : ''} (${usedProxy || '直连'})${fixed}${sceneVoice} ${sc.title}`);
+  const concurrency = Math.max(1, Number(opts.concurrency || cfg.tts.concurrency || 3));
+  if (wanted.length > 1 && concurrency > 1) {
+    log('tts', `并发合成 ${Math.min(concurrency, wanted.length)} 幕`);
   }
+
+  await mapLimit(wanted, concurrency, async (sc) => {
+    try {
+      // 单幕可换角色：scene.voice / scene.role / scene.gender 覆盖全局音色
+      const meta = sceneMeta.get(sc.id) || {};
+      const voice = resolveSceneVoice(cfg.tts, meta) || cfg.tts.voice;
+      // 内置词典 + 项目 tts.fixes（同名覆盖，值为 null 表示关闭该条），按本幕音色判断是否中文
+      const fixes = compileFixes({ ...cfg.tts, voice });
+      const mp3 = join(audioDir, `${sc.id}.mp3`);
+      const vtt = join(audioDir, `${sc.id}.vtt`);
+      const txt = join(audioDir, `${sc.id}.txt`);
+      const { text: spoken, ranges } = applyPronunciation(sc.text, fixes);
+      writeFileSync(txt, spoken, 'utf8');
+
+      const args = ['--voice', voice, '--file', txt, '--write-media', mp3];
+      if (cfg.tts.rate) args.push(`--rate=${cfg.tts.rate}`);
+      if (withVtt) args.push('--write-subtitles', vtt);
+
+      const usedProxy = await synthesize(bin, args, proxies);
+
+      if (!existsSync(mp3)) throw new Error(`${sc.id} 未生成 mp3`);
+      const sec = probeDuration(mp3);
+      if (!Number.isFinite(sec) || sec <= 0) throw new Error(`${sc.id} mp3 时长无效`);
+
+      // 合成文本中的同音替换只用于发音，字幕必须还原原文
+      if (withVtt && existsSync(vtt) && ranges.length) {
+        const raw = readFileSync(vtt, 'utf8');
+        const restored = restoreVtt(raw, spoken, ranges);
+        if (restored !== raw) writeFileSync(vtt, restored, 'utf8');
+      }
+
+      durations[sc.id] = Math.round(sec * 1000);
+      const fixed = ranges.length ? ` 读音修正 ${ranges.length} 处` : '';
+      const sceneVoice = voice !== cfg.tts.voice ? ` · ${voiceLabel(voice)}` : '';
+      log('tts', `${sc.id} ${sec.toFixed(1)}s${withVtt ? ' +vtt' : ''} (${usedProxy || '直连'})${fixed}${sceneVoice} ${sc.title}`);
+    } catch (e) {
+      throw new Error(`${sc.id} TTS 失败：${e.message}`);
+    }
+  });
 
   writeDurations(cfg, durations);
   log('tts', `durations -> ${join(audioDir, 'durations.json')}（本次 ${wanted.length} 幕）`);

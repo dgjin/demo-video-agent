@@ -1,5 +1,19 @@
 # 更新日志
 
+## 0.5.0 — 2026-10-21
+
+工程质量与制作效率专项：
+
+- 新增**终端幕**（`scene.terminal`）：读取 asciinema v2 `.cast`，生成黑底终端回放页并按该幕旁白时长自动适配倍速（0.25×–4×）后录制。支持 SGR 16 色 / 加粗 / 暗淡 / 下划线、`\r` 覆盖、`\b` 退格、`\t`、`\x1b[K` 清行与 `\x1b[2J` 清屏；渲染逻辑以源码内嵌方式与单测共用同一实现。新增 `engine/lib/terminal.mjs` 与示例 `examples/terminal-demo`。
+- 新增**单元测试**：`node:test` 共 56 个用例（读音替换还原、素材图切换规划、旁白解析、音色解析、时长解析、限流并发、断点续做判定、配置校验、终端 ANSI 回放），`npm test` 一键执行。顺带修复 `narration.md` 围栏代码块内容被误读进旁白的缺陷。
+- 新增**发布自检与 CI**：`npm run check` 校验 manifest 字段、版本一致（plugin.json / package.json / CHANGELOG / 技能 frontmatter）、技能/子代理/命令文件齐全、文档子命令与 CLI 一致（11 个）、`DV_ROOT` 定位片段与 `cli.mjs` 同源；`.github/workflows/ci.yml` 执行 `npm ci` + test + check + CLI 冒烟。
+- **TTS 并发**：多幕旁白并行合成（`tts.concurrency`，默认 3）。`execFileSync` 会阻塞事件循环，改用 `spawn` 包装的 `execAsync` + `mapLimit` 限流保序；两幕实测 2.5s 完成。
+- **断点续做**：`record` 与 `compose` 基于输入 mtime 复用产物（配置 / 画面源 / 音频任一更新才重做），`--force` 强制重做。改一幕只重录一幕，重跑配音后自动重录相关幕。
+- **配置字段级校验**：加载时校验 `viewport/fps/finalVideo/narration/compose.crf/padSeconds/tts.concurrency/dirs` 与每幕画面源（四选一及互斥）、`asset` 形态、`fit` 枚举；报错带 `scenes[i](id).field` 路径。
+- **overlay 入场时刻单一写法**：示例与模板中的硬编码 `calc(12.2s - var(--delta))` 全部收敛为 `--d: 12.2s` + `animation-delay: calc(var(--d) - var(--delta))`，双值动作用 `--d/--d2`，校准脚本与人工改时长只认一种写法。
+- `doctor` 的幕类型分布新增 `terminal`；`record --dry/--no-record` 对终端幕同样生成回放页彩排。
+- README / 操作手册 / SKILL / pipeline-reference / calibration-and-pitfalls / qoder.md / 导演指令 / 斜杠命令同步更新四类幕说明、断点续做与新坑（录屏偶发底边灰条、终端幕 ANSI 边界）。
+
 ## 0.4.0 — 2026-10-21
 
 - 新增**素材幕**（`scene.asset`）：导入已有视频（mp4/webm/mov/mkv/m4v/avi/gif）或截图序列（png/jpg/jpeg/webp/bmp），配旁白出片——覆盖 App 真机录屏、实拍、3D 渲染、设计稿等非 Web 产品演示。

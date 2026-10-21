@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci --no-audit --no-fund
+
+      - name: 纯函数单测（读音还原 / 图片切换 / 文稿解析 / 音色 / 时长）
+        run: npm test
+
+      - name: 发布一致性自检（manifest / 版本 / 文档防漂移）
+        run: npm run check
+
+      - name: CLI 冒烟
+        run: |
+          node engine/cli.mjs --version
+          node engine/cli.mjs help > /dev/null
+          node engine/cli.mjs doctor --config examples/asset-demo/demo-video.config.mjs || true

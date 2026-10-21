@@ -6,7 +6,7 @@
 ## 岗位能力
 
 - **分幕策划**：`skills/demo-video-storyboard`，负责现场勘察、幕结构、旁白文稿与时长预算。
-- **制作流水线**：`skills/demo-video-production`，负责 TTS 配音、分幕画面（录屏 / overlay 展示页 / 素材导入）、音画校准、合成与抽帧验收。
+- **制作流水线**：`skills/demo-video-production`，负责 TTS 配音、分幕画面（真实操作录屏 / overlay 展示页 / 素材导入 / 终端回放）、音画校准、合成与抽帧验收。
 - **角色指令**：`agents/demo-video-director.md`，以导演视角编排两个技能。
 - **快捷入口**：`commands/demo-video.md`，对应 `/demo-video` 斜杠命令。
 
@@ -14,6 +14,7 @@
 
 - 用户要为一个 Web 系统或产品做演示讲解视频；
 - 已有真机录屏、实拍、渲染视频或截图序列，要配上旁白做成讲解视频（素材幕）；
+- 要展示 CLI 安装、构建或运行过程，用终端回放幕（asciinema `.cast`）配旁白；
 - 已有演示片需要新增、修改或重录某一幕；
 - 需要 TTS 配音、句级字幕、音画严格对齐；
 - 需要把架构图、文档页或能力总结做成带解说的视频。

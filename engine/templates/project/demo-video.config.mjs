@@ -60,6 +60,10 @@ export default {
     // { id: 'm1', title: 'App 演示', asset: 'assets/app-demo.mp4' },
     // { id: 'm2', title: '界面走查', asset: ['assets/shot-01.png', 'assets/shot-02.png'] },
 
+    // 终端幕：把 asciinema 录制（asciinema rec demo.cast）回放成终端画面
+    // 回放速度自动贴合该幕旁白时长；支持 SGR 颜色/加粗、回车覆盖、清行清屏，不支持全屏 TUI
+    // { id: 'm2b', title: '命令行演示', terminal: 'assets/demo.cast' },
+
     // 真实操作幕（示例，按需启用；选择器改成你自己系统的即可）：
     // { id: 'm3', title: '主界面', auth: true, async run({ page, at, clickLoc, hoverText }) {
     //   await at(1.5);

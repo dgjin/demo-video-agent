@@ -20,6 +20,7 @@ overlay 区块出现时刻 --d = 句开始时刻 + 0.3 ~ 0.6s
 
 - 动画不能自动播放，由录制引擎在 `.stage` 就绪后加 `body.playing` 触发。
 - 页面加载耗时（实测 0.03–0.05s，复杂页更大）必须以 `--delta` 注入，delay 用 `calc(var(--d) - var(--delta))` 抵消，否则动画整体后移。
+- 入场时刻只写一种形式：元素上 `--d: 12.2s`（双值用 `--d`/`--d2`），delay 统一 `calc(var(--d) - var(--delta))`。不要直接写 `calc(12.2s - var(--delta))`——批量校准时两套写法很难同时改全，容易漏掉模拟动作（光标、打字、结果卡）。
 - 首帧残影：Chromium headless 录制开头约 0–0.6s 有渲染残留，已固化进 webm，转码无法去除。用与背景同色的 `#veil` 遮罩：armed 后 1s 开始、1s 淡出。抽 webm 源帧与成片帧一致即可确认残影来自录制端而非转码。
 
 ## 三、画面节奏
@@ -34,8 +35,9 @@ overlay 区块出现时刻 --d = 句开始时刻 + 0.3 ~ 0.6s
 - 护栏不能防浏览器整体挂起。外部判据：①单幕耗时远超 `durations` 量级；②webm 体积异常（正常几 MB，异常数百 MB）；③日志长时间无新行。命中任一 → kill 重录，不要在受限环境做 lsof/sample 诊断。
 - 不要用 `... | tail -N` 观察长任务（管道缓冲到进程结束）；重定向日志文件后轮询。
 - 彩排（`--dry`/`--no-record`）通过不代表正式录制必然顺利：正式模式补齐/关闭更慢，仍要按上述判据守护。
-- 每幕独立浏览器实例，单幕异常只影响该幕；重录单幕后只需重跑 `compose`。
-- 展示幕的仿真光标隐藏依赖 overlay 的 `.dv-cursor { display: none !important }`；引擎注入样式不得再带 `display: block !important`，否则片头/片尾左下角会留下蓝色圆点（曾因注入样式覆盖而出现）。
+- 每幕独立浏览器实例，单幕异常只影响该幕；重录单幕后只需重跑 `compose`（未变的分幕会自动复用，`--force` 才全部重做）。
+- 偶发底边灰条：极少数录制会话中 Chrome 窗口高度异常，webm 底部出现一条纯灰边（页面截图正常、同页重录消失）。判据是直接抽 `videos/<id>.webm` 的帧也带灰条；处理为 `record --scenes <id> --force` 重录，不要改 CSS。
+- 展示幕与终端幕的仿真光标隐藏依赖页面里的 `.dv-cursor { display: none !important }`；引擎注入样式不得再带 `display: block !important`，否则片头/片尾/终端画面左下角会留下蓝色圆点（曾因注入样式覆盖、终端回放页漏写而出现）。
 
 ## 五、被测系统相关
 
@@ -52,15 +54,22 @@ overlay 区块出现时刻 --d = 句开始时刻 + 0.3 ~ 0.6s
 - 同文本同参数输出确定性，重生成不会改变时长；改一个字都可能改变整幕时长，需重新校准。
 - 长幕拆成多句（每句 15–40 字），避免单句过长导致字幕与画面难以对齐。
 
-## 七、画面质量与编码伪影
+## 七、终端幕
+
+- 只支持行式输出：SGR 颜色/加粗、`\r` 覆盖（字符级，进度条可正常刷新）、`\b`/`\t`、清行清屏；光标定位（`\x1b[<n>;<m>H` 等）被丢弃，vim/top/htop 这类全屏 TUI 会显示成一堆追加行。
+- cast 时长与旁白不必相等：speed = cast / (旁白 × 0.92)，clamp 0.25×–4×。cast 远超旁白时最后几行会被幕尾裁掉——要么加长旁白，要么精简 cast 尾部（如去掉末尾等待）。
+- 回放页生成在 `videos/.tmp/<id>-terminal.html`，可单独用浏览器打开核对渲染；正式录制走 overlay 链路，`--dry` 也能彩排。
+- 标题栏显示 `title — shell · cast 时长`，`title` 取自 scene.title，shell 取自 cast header 的 `env.SHELL`。
+
+## 八、画面质量与编码伪影
 
 - 暗色大面积平坦渐变经录屏（VP8 webm）后可能出现块状/色带伪影，合成（h264）会继承，肉眼在片尾/片头最明显。
 - 定位方法：`ffmpeg -ss <t> -i videos/mX.webm -frames:v 1 -y diag/webm.png` 与 Playwright 直接截图对比。截图干净而 webm 有块，即为录制端编码量化，不是 DOM/CSS 问题，调 CSS 无效。
 - 缓解手段（代价从低到高）：overlay 避免大面积纯暗渐变（深色背景加细网格/纹理）；`compose.crf` 提到 18；加极淡颗粒层（SVG feTurbulence，opacity ≤ .05）做抖动，但 webm 体积会明显增大。
 - 验收一律以「从成片抽帧」为准，不要只看浏览器里的 DOM 效果。
 
-## 八、交付
+## 九、交付
 
-- 只入库源码：`demo-video.config.mjs`、`narration.md`、`overlay/*.html`、`audio/*.vtt`、`audio/durations.json`。
+- 只入库源码：`demo-video.config.mjs`、`narration.md`、`overlay/*.html`、`assets/*`（素材与 cast）、`audio/*.vtt`、`audio/durations.json`。
 - 产物 gitignore：`audio/*.mp3`、`videos/`、`out/`、`diag/`、`*.mp4`、`.auth-state.json`。
 - 提交前跑一次 `compose` + 关键帧抽检；成片作为附件交付，不塞进仓库。

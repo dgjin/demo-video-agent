@@ -1,6 +1,6 @@
 {
   "name": "demo-video-agent",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "description": "Narration-driven demo video pipeline: edge-tts -> Playwright scene recording -> ffmpeg compose",
@@ -10,6 +10,8 @@
   "scripts": {
     "setup": "node engine/cli.mjs setup",
     "doctor": "node engine/cli.mjs doctor",
+    "test": "node --test \"test/*.test.mjs\"",
+    "check": "node scripts/check.mjs",
     "hello": "node engine/cli.mjs all --config examples/hello-video/demo-video.config.mjs"
   },
   "engines": {

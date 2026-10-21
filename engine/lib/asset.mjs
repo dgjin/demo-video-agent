@@ -6,7 +6,7 @@ const VIDEO_EXT = new Set(['.mp4', '.webm', '.mov', '.mkv', '.m4v', '.avi', '.gi
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.bmp']);
 
 /** 解析 VTT 的句首时刻（秒，升序）；图片序列按这些时刻切换 */
-function vttCueStarts(file) {
+export function vttCueStarts(file) {
   if (!existsSync(file)) return [];
   const starts = [];
   for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
@@ -43,6 +43,22 @@ function transcodeVideo(cfg, sc, src) {
 }
 
 /**
+ * 计算图片切换时间轴（纯函数，便于单测）。
+ * 有 2 句以上 VTT 时按句首切换：切换点 = [0, 第2句首, …]，图片多于句数时截断；
+ * 否则按目标时长均分。返回 { switches, useCount, note }。
+ */
+export function planImageSwitches(fileCount, starts, targetSec) {
+  if (starts.length >= 2) {
+    const switches = [0, ...starts.slice(1, fileCount)];
+    const useCount = Math.min(fileCount, switches.length);
+    return { switches, useCount, note: `${useCount} 图 · VTT 句首切换` };
+  }
+  const step = targetSec / fileCount;
+  const switches = Array.from({ length: fileCount }, (_, i) => i * step);
+  return { switches, useCount: fileCount, note: `${fileCount} 图 · 均分（无 VTT）` };
+}
+
+/**
  * 图片序列：多图按该幕 VTT 句首时刻切换（首图从 0 起显示到第二句首，
  * 依此类推，末图撑到幕尾）；无 VTT 时按目标时长均分；单图全程定格。
  * 图片多于句数时，多余图片忽略并提示。
@@ -58,19 +74,7 @@ function buildFromImages(cfg, sc, files, targetSec) {
   }
 
   const starts = vttCueStarts(join(cfg.paths.audio, `${sc.id}.vtt`));
-  let switches;
-  let note;
-  if (starts.length >= 2) {
-    // 切换点 = [0, 第2句首, …]；句数不足时截断，多余图片忽略
-    switches = [0, ...starts.slice(1, files.length)];
-    note = `${Math.min(files.length, switches.length)} 图 · VTT 句首切换`;
-  } else {
-    const step = targetSec / files.length;
-    switches = Array.from({ length: files.length }, (_, i) => i * step);
-    note = `${files.length} 图 · 均分（无 VTT）`;
-  }
-
-  const useCount = Math.min(files.length, switches.length);
+  const { switches, useCount, note } = planImageSwitches(files.length, starts, targetSec);
   if (useCount < files.length) {
     log('asset', `${sc.id} 图片数（${files.length}）多于切换点（${useCount}），多余图片忽略`);
   }

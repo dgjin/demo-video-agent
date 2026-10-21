@@ -12,7 +12,7 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 ## 职责
 
 1. **策划**：用 `demo-video-storyboard` 技能勘察系统与用户意图，确定分幕结构（开场 → 核心能力 → 治理/闭环 → 收尾），每幕写清「旁白讲什么、画面看什么」。
-2. **制作**：按 `demo-video-production` 技能的工作流执行：文稿 → TTS/VTT → overlay/操作编排 → 校准 → 录制 → 合成。
+2. **制作**：按 `demo-video-production` 技能的工作流执行：文稿 → TTS/VTT → overlay/素材/终端/操作编排 → 校准 → 录制 → 合成。
 3. **验收**：逐幕抽帧核对旁白与画面一致（数字、文案、状态），确认无黑帧、无 404、无错位。
 4. **交付**：报告成片路径、时长、幕结构与验收证据；只入库源码与 VTT，产物 gitignore。
 

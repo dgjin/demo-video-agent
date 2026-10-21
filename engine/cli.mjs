@@ -27,13 +27,15 @@ const HELP = `demo-video —— 旁白驱动的演示视频流水线（v${MANIFE
                                         列出内置解说音色（角色 / 男女声）
   demo-video tts      [--scenes a,b] [--no-vtt] [--voice <音色或角色>] [--role <角色>] [--gender male|female]
                                         合成旁白 mp3 + 句级 VTT + durations.json
-  demo-video record   [--scenes a,b] [--dry] [--no-record]
+  demo-video record   [--scenes a,b] [--dry] [--no-record] [--force]
                                         分幕录屏（--dry 每幕 8s 彩排；--no-record 只跑操作链）
                                         素材幕 scene.asset：视频自动适配画幅，多图按 VTT 句首切换
-  demo-video compose                    按音频时长合成并拼接成片
+                                        终端幕 scene.terminal：asciinema v2 .cast 回放成终端画面
+                                        断点续做：已有录屏且比输入（配置/画面源/音频）新时跳过，--force 强制重录
+  demo-video compose  [--force]         按音频时长合成并拼接成片（已合成的分幕默认复用）
   demo-video frames   --at 3,8 [--scene m1] [--width 1280]
                                         抽帧验收（--scene 时 --at 为该幕内相对秒）
-  demo-video all      [--scenes a,b] [--dry] [--no-record] [--at 3,8] [--role <角色>]
+  demo-video all      [--scenes a,b] [--dry] [--no-record] [--force] [--at 3,8] [--role <角色>]
                                         tts → record → compose（带 --at 时追加抽帧）
 
 通用参数：
@@ -199,7 +201,7 @@ async function doctor(flags) {
   if (existsSync(cfgPath)) {
     try {
       const cfg = await loadConfig(cfgPath);
-      const kinds = cfg.scenes.map((s) => (s.asset ? 'asset' : s.overlay ? 'overlay' : 'run'));
+      const kinds = cfg.scenes.map((s) => (s.terminal ? 'terminal' : s.asset ? 'asset' : s.overlay ? 'overlay' : 'run'));
       const dist = Object.entries(kinds.reduce((m, k) => ((m[k] = (m[k] || 0) + 1), m), {}))
         .map(([k, n]) => `${k} ${n}`)
         .join(' · ');
@@ -296,21 +298,21 @@ async function main() {
 
   switch (cmd) {
     case 'tts':
-      runTts(cfg, { scenes, vtt: !flags['no-vtt'] });
+      await runTts(cfg, { scenes, vtt: !flags['no-vtt'] });
       break;
     case 'record':
-      await runRecord(cfg, { scenes, dry: !!flags.dry, noRecord: !!flags['no-record'] });
+      await runRecord(cfg, { scenes, dry: !!flags.dry, noRecord: !!flags['no-record'], force: !!flags.force });
       break;
     case 'compose':
-      runCompose(cfg);
+      runCompose(cfg, { force: !!flags.force });
       break;
     case 'frames':
       extractFrames(cfg, frameOpts);
       break;
     case 'all': {
-      runTts(cfg, { scenes, vtt: !flags['no-vtt'] });
-      await runRecord(cfg, { scenes, dry: !!flags.dry, noRecord: !!flags['no-record'] });
-      if (!flags['no-record']) runCompose(cfg);
+      await runTts(cfg, { scenes, vtt: !flags['no-vtt'] });
+      await runRecord(cfg, { scenes, dry: !!flags.dry, noRecord: !!flags['no-record'], force: !!flags.force });
+      if (!flags['no-record']) runCompose(cfg, { force: !!flags.force });
       if (flags.at && !flags['no-record']) extractFrames(cfg, frameOpts);
       break;
     }
