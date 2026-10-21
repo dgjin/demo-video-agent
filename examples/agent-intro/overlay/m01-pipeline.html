@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>m01 · 流水线</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  .head-left { display: flex; flex-direction: column; gap: 18px; }
+  .track {
+    position: absolute; left: 108px; right: 108px; top: 360px;
+    display: flex; align-items: stretch;
+  }
+  .node {
+    position: relative; width: 372px; padding: 34px 32px 30px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .node .icon {
+    width: 66px; height: 66px; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(56, 189, 248, .26);
+    background: radial-gradient(60px 60px at 50% 30%, rgba(56, 189, 248, .16), rgba(56, 189, 248, .03));
+    color: #8ed9fb;
+  }
+  .node .no {
+    position: absolute; right: 28px; top: 28px;
+    font-family: var(--mono); font-size: 15px; letter-spacing: 2px; color: var(--dimmer);
+  }
+  .node .name { font-size: 32px; font-weight: 640; letter-spacing: 2px; margin-top: 4px; }
+  .node .artifact {
+    font-family: var(--mono); font-size: 16px; letter-spacing: .5px; color: #7dd3fc;
+  }
+  .node .desc { font-size: 18px; line-height: 1.65; color: var(--dim); }
+  .link {
+    width: 72px; display: flex; align-items: center; justify-content: center;
+  }
+  .link span {
+    position: relative; width: 100%; height: 1px;
+    background: linear-gradient(90deg, rgba(148,163,184,.12), rgba(148,163,184,.42), rgba(148,163,184,.12));
+    overflow: hidden;
+  }
+  body.playing .link span::after {
+    content: ""; position: absolute; top: -1px; left: -30%;
+    width: 30%; height: 3px; border-radius: 2px;
+    background: linear-gradient(90deg, transparent, rgba(56,189,248,.9), transparent);
+    animation: sweep 2.4s linear infinite;
+    animation-delay: calc(var(--d, 0s) - var(--delta));
+  }
+  @keyframes sweep { from { left: -30%; } to { left: 100%; } }
+
+  .chain {
+    position: absolute; left: 0; right: 0; top: 700px;
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+    font-family: var(--mono); font-size: 16px; color: #6d829c; letter-spacing: .5px;
+  }
+  .chain .final { color: #9fd8f7; }
+  .chain .arrow { color: #3d4f66; font-size: 15px; }
+
+  .note {
+    position: absolute; left: 50%; transform: translateX(-50%); bottom: 190px;
+    display: flex; align-items: center; gap: 20px;
+    padding: 18px 34px; border-radius: 14px;
+    border: 1px solid rgba(56, 189, 248, .22);
+    background: rgba(10, 18, 32, .86);
+    font-size: 21px; color: #c8d6ea; letter-spacing: 1px;
+  }
+  .note .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+  .note code { font-family: var(--mono); font-size: 19px; color: #7dd3fc; }
+  .note .sep { width: 1px; height: 22px; background: var(--line); }
+  .note em { font-style: normal; color: var(--dim); }
+  .verdict {
+    position: absolute; left: 0; right: 0; bottom: 110px; text-align: center;
+    font-size: 20px; letter-spacing: 4px; color: var(--dimmer);
+  }
+  .overview {
+    position: absolute; left: 0; right: 0; top: 470px; text-align: center;
+    font-size: 30px; letter-spacing: 12px; color: #405a76; opacity: 0;
+  }
+  body.playing .overview {
+    animation: rise .8s cubic-bezier(.2,.7,.2,1) forwards, out .45s ease forwards;
+    animation-delay: calc(.85s - var(--delta)), calc(2.95s - var(--delta));
+  }
+  @keyframes out { to { opacity: 0; } }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="grid-bg"></div>
+  <div class="glow glow-a"></div>
+  <div class="glow glow-b"></div>
+
+  <div class="head">
+    <div class="head-left">
+      <div class="kicker anim" style="--d:0.2s">Pipeline</div>
+      <h1 class="title anim" style="--d:0.45s">一条流水线，四个环节</h1>
+    </div>
+    <div class="scene-no anim" style="--d:0.3s">02 / 07</div>
+  </div>
+
+  <div class="overview">文稿 · 配音 · 录屏 · 合成</div>
+
+  <div class="track">
+    <div class="node card anim" style="--d:1s">
+      <div class="no">01</div>
+      <div class="icon anim" style="--d:3.14s">
+        <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+          <rect x="7" y="4" width="26" height="32" rx="3"/>
+          <path d="M13 13h14M13 20h14M13 27h9"/>
+        </svg>
+      </div>
+      <div class="name anim" style="--d:3.19s">文稿</div>
+      <div class="artifact anim" style="--d:3.29s">narration.md</div>
+      <p class="desc anim" style="--d:3.39s">按幕写旁白，一句话一个句号</p>
+    </div>
+
+    <div class="link anim" style="--d:4.44s"><span style="--d:4.44s"></span></div>
+
+    <div class="node card anim" style="--d:1s">
+      <div class="no">02</div>
+      <div class="icon anim" style="--d:5.98s">
+        <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+          <path d="M7 18v-4M13 24V10M19 29V7M25 24V10M31 18v-4M37 18v-4"/>
+        </svg>
+      </div>
+      <div class="name anim" style="--d:6.03s">配音</div>
+      <div class="artifact anim" style="--d:6.13s">mp3 + vtt</div>
+      <p class="desc anim" style="--d:6.23s">句级时间戳，作为全片唯一时间轴</p>
+    </div>
+
+    <div class="link anim" style="--d:7.68s"><span style="--d:7.68s"></span></div>
+
+    <div class="node card anim" style="--d:1s">
+      <div class="no">03</div>
+      <div class="icon anim" style="--d:9.18s">
+        <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="7" width="32" height="26" rx="3"/>
+          <path d="M4 14h32"/>
+          <path d="M17 19l9 5-9 5z"/>
+        </svg>
+      </div>
+      <div class="name anim" style="--d:9.23s">录屏</div>
+      <div class="artifact anim" style="--d:9.33s">webm</div>
+      <p class="desc anim" style="--d:9.43s">浏览器分幕录制，展示页或真实操作</p>
+    </div>
+
+    <div class="link anim" style="--d:11.08s"><span style="--d:11.08s"></span></div>
+
+    <div class="node card anim" style="--d:1s">
+      <div class="no">04</div>
+      <div class="icon anim" style="--d:12.58s">
+        <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+          <path d="M6 10h28M6 20h28M6 30h28"/>
+          <circle cx="14" cy="10" r="2.6" fill="currentColor" stroke="none"/>
+          <circle cx="25" cy="20" r="2.6" fill="currentColor" stroke="none"/>
+          <circle cx="18" cy="30" r="2.6" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <div class="name anim" style="--d:12.63s">合成</div>
+      <div class="artifact anim" style="--d:12.73s">mp4</div>
+      <p class="desc anim" style="--d:12.83s">ffmpeg 按音频裁切、补帧、拼接</p>
+    </div>
+  </div>
+
+  <div class="chain">
+    <span class="anim" style="--d:3.54s">narration.md</span>
+    <span class="arrow anim" style="--d:3.64s">→</span>
+    <span class="anim" style="--d:6.38s">mp3 + vtt</span>
+    <span class="arrow anim" style="--d:6.48s">→</span>
+    <span class="anim" style="--d:9.58s">webm</span>
+    <span class="arrow anim" style="--d:9.68s">→</span>
+    <span class="anim final" style="--d:12.98s">mp4 + 抽帧验收</span>
+  </div>
+
+  <div class="note anim" style="--d:16.26s">
+    <span class="dot"></span>
+    时间轴 = <code>audio/durations.json</code>
+    <span class="sep"></span>
+    <em>以真实音频时长为准，不按字数估算</em>
+  </div>
+
+  <div class="verdict anim" style="--d:17.66s">TTS 一次，时长全片复用</div>
+</div>
+<div id="veil"></div>
+</body>
+</html>

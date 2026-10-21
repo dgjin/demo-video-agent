@@ -10,7 +10,7 @@
    * 3) body.playing 触发动画；4) --delta 由录制引擎注入（页面加载耗时），用于抵消 delay；
    * 5) #veil 遮蔽 Chromium 录制首帧残影；6) .dv-cursor 在展示幕中隐藏。
    *
-   * 校准方法：TTS 生成后读 audio/<幕ID>.vtt 的句级时间戳，
+   * 校准方法：TTS 生成后读 audio/m00.vtt 的句级时间戳，
    * 把每个区块的 --d 设为「该句开始时刻 + 0.3~0.6s」。
    */
   :root {

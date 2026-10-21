@@ -1,18 +1,87 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Demo Video Agent">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="logoTitle logoDesc">
+  <title id="logoTitle">演示视频导演</title>
+  <desc id="logoDesc">深蓝圆角图标：白色场记板、渐变播放键与录音指示点，象征分幕策划与成片交付。</desc>
+
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1e3a8a"/>
-      <stop offset="1" stop-color="#0b1220"/>
+      <stop offset="0" stop-color="#0A1124"/>
+      <stop offset="0.55" stop-color="#111C3E"/>
+      <stop offset="1" stop-color="#1A2452"/>
     </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#60a5fa"/>
-      <stop offset="1" stop-color="#a78bfa"/>
+    <radialGradient id="glowCyan" cx="0.22" cy="0.16" r="0.58">
+      <stop offset="0" stop-color="#22D3EE" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowViolet" cx="0.82" cy="0.88" r="0.62">
+      <stop offset="0" stop-color="#8B5CF6" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="board" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E6EDFF"/>
     </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DCE6FF"/>
+    </linearGradient>
+    <linearGradient id="play" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#67E8F9"/>
+      <stop offset="0.48" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <filter id="boardShadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="22" stdDeviation="22" flood-color="#020617" flood-opacity="0.5"/>
+    </filter>
+    <filter id="playGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#2563EB" flood-opacity="0.45"/>
+    </filter>
+    <clipPath id="tileClip">
+      <rect width="512" height="512" rx="116"/>
+    </clipPath>
+    <clipPath id="barClip">
+      <rect x="104" y="128" width="304" height="58" rx="18"/>
+    </clipPath>
   </defs>
-  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
-  <rect x="20" y="30" width="88" height="68" rx="10" fill="none" stroke="url(#accent)" stroke-width="4"/>
-  <path d="M34 30l10-10M58 30l10-10M82 30l10-10" stroke="#60a5fa" stroke-width="4" stroke-linecap="round"/>
-  <path d="M56 50v28l24-14z" fill="url(#accent)"/>
-  <circle cx="98" cy="96" r="12" fill="#0b1220" stroke="#a78bfa" stroke-width="3"/>
-  <path d="M94 96h8M98 92v8" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round"/>
+
+  <g clip-path="url(#tileClip)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <rect width="512" height="512" fill="url(#glowCyan)"/>
+    <rect width="512" height="512" fill="url(#glowViolet)"/>
+  </g>
+
+  <g filter="url(#boardShadow)">
+    <rect x="116" y="176" width="280" height="220" rx="30" fill="url(#board)" stroke="#0B1226" stroke-opacity="0.06" stroke-width="2"/>
+
+    <g transform="rotate(-6 256 157)">
+      <rect x="104" y="128" width="304" height="58" rx="18" fill="url(#bar)" stroke="#0B1226" stroke-opacity="0.10" stroke-width="2"/>
+      <g clip-path="url(#barClip)" opacity="0.9">
+        <g transform="rotate(-24 256 157)" fill="#0B1226">
+          <rect x="60" y="40" width="30" height="240" rx="4"/>
+          <rect x="130" y="40" width="30" height="240" rx="4"/>
+          <rect x="200" y="40" width="30" height="240" rx="4"/>
+          <rect x="270" y="40" width="30" height="240" rx="4"/>
+          <rect x="340" y="40" width="30" height="240" rx="4"/>
+          <rect x="410" y="40" width="30" height="240" rx="4"/>
+        </g>
+      </g>
+    </g>
+
+    <circle cx="366" cy="208" r="16" fill="#FB7185" opacity="0.15"/>
+    <circle cx="366" cy="208" r="10" fill="#FB7185"/>
+
+    <path d="M208 228 L208 336 L312 282 Z" fill="url(#play)" stroke="url(#play)" stroke-width="18" stroke-linejoin="round" filter="url(#playGlow)"/>
+
+    <g fill="#0B1226" opacity="0.16">
+      <rect x="198" y="370" width="8" height="10" rx="4"/>
+      <rect x="216" y="364" width="8" height="16" rx="4"/>
+      <rect x="234" y="358" width="8" height="22" rx="4"/>
+      <rect x="252" y="354" width="8" height="26" rx="4"/>
+      <rect x="270" y="358" width="8" height="22" rx="4"/>
+      <rect x="288" y="364" width="8" height="16" rx="4"/>
+      <rect x="306" y="370" width="8" height="10" rx="4"/>
+    </g>
+  </g>
+
+  <path d="M40 116C40 72 72 40 116 40H396C440 40 472 72 472 116" fill="none" stroke="#FFFFFF" stroke-opacity="0.14" stroke-width="3" stroke-linecap="round"/>
+  <rect x="8" y="8" width="496" height="496" rx="112" fill="none" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="2"/>
 </svg>

@@ -2,45 +2,80 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { parseNarration } from './narration.mjs';
+import { applyPronunciation, compileFixes, restoreVtt } from './pronunciation.mjs';
 import { readDurationsOrEmpty, writeDurations } from './durations.mjs';
 import { ensureDir, exec, log, probeDuration } from './util.mjs';
+import { resolveSceneVoice, voiceLabel } from './voices.mjs';
 
 /**
- * 定位 edge-tts：显式配置 > 环境变量 > pip 用户目录 > Homebrew/PATH。
- * 不可用时返回空串，由调用方给出安装提示。
+ * 定位 edge-tts：显式配置 > 环境变量 > 常见安装目录 > PATH > Python 模块。
+ * 返回 { cmd, args, label }；不可用时返回 null，由调用方给出安装提示。
  */
 export function resolveEdgeTts(cfg) {
-  const candidates = [cfg?.tts?.edgeTtsBin, process.env.EDGE_TTS];
+  const explicit = cfg?.tts?.edgeTtsBin || process.env.EDGE_TTS;
+  if (explicit) return { cmd: explicit, args: [], label: explicit };
+
+  for (const bin of candidateBins()) {
+    if (bin && existsSync(bin)) return { cmd: bin, args: [], label: bin };
+  }
+
+  try {
+    exec('edge-tts', ['--help'], { timeout: 15000, stdio: ['ignore', 'ignore', 'ignore'] });
+    return { cmd: 'edge-tts', args: [], label: 'edge-tts (PATH)' };
+  } catch {
+    /* 继续尝试 Python 模块 */
+  }
+  return pythonModule();
+}
+
+/** 常见安装位置（覆盖 macOS / Linux / Windows 的 pip 用户目录） */
+function candidateBins() {
+  const out = [];
+  if (process.platform === 'win32') {
+    const roots = [
+      process.env.APPDATA && join(process.env.APPDATA, 'Python'),
+      process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, 'Programs', 'Python'),
+    ].filter(Boolean);
+    for (const root of roots) {
+      if (!existsSync(root)) continue;
+      for (const v of readdirSync(root)) out.push(join(root, v, 'Scripts', 'edge-tts.exe'));
+    }
+    return out;
+  }
   const pyRoot = join(homedir(), 'Library', 'Python');
   if (existsSync(pyRoot)) {
-    for (const v of readdirSync(pyRoot)) candidates.push(join(pyRoot, v, 'bin', 'edge-tts'));
+    for (const v of readdirSync(pyRoot)) out.push(join(pyRoot, v, 'bin', 'edge-tts'));
   }
-  candidates.push(
+  out.push(
     join(homedir(), '.local', 'bin', 'edge-tts'),
     '/opt/homebrew/bin/edge-tts',
-    '/usr/local/bin/edge-tts'
+    '/usr/local/bin/edge-tts',
+    '/usr/bin/edge-tts'
   );
-  for (const c of candidates) {
-    if (c && existsSync(c)) return c;
-  }
-  try {
-    exec('which', ['edge-tts']);
-    return 'edge-tts';
-  } catch {
-    return '';
-  }
+  return out;
 }
 
-/**
- * 多音字读音修正：仅作用于合成文本。
- * 例：数据语境「行」应读 háng，edge-tts 常读 xíng——合成前替换为同音字，字幕生成后还原原文。
- */
-export function applyFixes(text, fixes = []) {
-  return fixes.reduce((s, [from, to]) => (from ? s.split(from).join(to) : s), text);
-}
-
-export function revertFixes(text, fixes = []) {
-  return fixes.reduce((s, [from, to]) => (to ? s.split(to).join(from) : s), text);
+/** 已安装 edge-tts 但脚本不在 PATH 时，退回 `python -m edge_tts` */
+function pythonModule() {
+  const pythons =
+    process.platform === 'win32'
+      ? [
+          ['py', ['-3', '-m', 'edge_tts']],
+          ['python', ['-m', 'edge_tts']],
+        ]
+      : [
+          ['python3', ['-m', 'edge_tts']],
+          ['python', ['-m', 'edge_tts']],
+        ];
+  for (const [cmd, args] of pythons) {
+    try {
+      exec(cmd, [...args, '--help'], { timeout: 15000, stdio: ['ignore', 'ignore', 'ignore'] });
+      return { cmd, args, label: `${cmd} ${args.join(' ')}` };
+    } catch {
+      /* 尝试下一个解释器 */
+    }
+  }
+  return null;
 }
 
 function resolveProxies(cfg) {
@@ -53,12 +88,13 @@ function resolveProxies(cfg) {
 }
 
 /** 每个代理尝试两轮；直连失败后才回退代理的语义由 proxies 顺序决定 */
-function synthesize(bin, args, proxies) {
+function synthesize(spec, args, proxies) {
   const plan = proxies.length ? [...proxies, ...proxies] : [null, null];
   let lastErr;
   for (const proxy of plan) {
     try {
-      exec(bin, proxy ? [...args, '--proxy', proxy] : args, { timeout: 180000 });
+      const full = [...spec.args, ...args, ...(proxy ? ['--proxy', proxy] : [])];
+      exec(spec.cmd, full, { timeout: 180000 });
       return proxy;
     } catch (e) {
       lastErr = e;
@@ -98,14 +134,22 @@ export function runTts(cfg, opts = {}) {
   const durations = readDurationsOrEmpty(cfg);
   const proxies = resolveProxies(cfg);
   const withVtt = opts.vtt !== false;
+  // 单幕音色覆盖写在 config.scenes 上，合成时按幕 ID 取回来
+  const sceneMeta = new Map(cfg.scenes.map((s) => [s.id, s]));
 
   for (const sc of wanted) {
+    // 单幕可换角色：scene.voice / scene.role / scene.gender 覆盖全局音色
+    const meta = sceneMeta.get(sc.id) || {};
+    const voice = resolveSceneVoice(cfg.tts, meta) || cfg.tts.voice;
+    // 内置词典 + 项目 tts.fixes（同名覆盖，值为 null 表示关闭该条），按本幕音色判断是否中文
+    const fixes = compileFixes({ ...cfg.tts, voice });
     const mp3 = join(audioDir, `${sc.id}.mp3`);
     const vtt = join(audioDir, `${sc.id}.vtt`);
     const txt = join(audioDir, `${sc.id}.txt`);
-    writeFileSync(txt, applyFixes(sc.text, cfg.tts.fixes), 'utf8');
+    const { text: spoken, ranges } = applyPronunciation(sc.text, fixes);
+    writeFileSync(txt, spoken, 'utf8');
 
-    const args = ['--voice', cfg.tts.voice, '--file', txt, '--write-media', mp3];
+    const args = ['--voice', voice, '--file', txt, '--write-media', mp3];
     if (cfg.tts.rate) args.push(`--rate=${cfg.tts.rate}`);
     if (withVtt) args.push('--write-subtitles', vtt);
 
@@ -116,14 +160,16 @@ export function runTts(cfg, opts = {}) {
     if (!Number.isFinite(sec) || sec <= 0) throw new Error(`${sc.id} mp3 时长无效`);
 
     // 合成文本中的同音替换只用于发音，字幕必须还原原文
-    if (withVtt && existsSync(vtt)) {
+    if (withVtt && existsSync(vtt) && ranges.length) {
       const raw = readFileSync(vtt, 'utf8');
-      const restored = revertFixes(raw, cfg.tts.fixes);
+      const restored = restoreVtt(raw, spoken, ranges);
       if (restored !== raw) writeFileSync(vtt, restored, 'utf8');
     }
 
     durations[sc.id] = Math.round(sec * 1000);
-    log('tts', `${sc.id} ${sec.toFixed(1)}s${withVtt ? ' +vtt' : ''} (${usedProxy || '直连'}) ${sc.title}`);
+    const fixed = ranges.length ? ` 读音修正 ${ranges.length} 处` : '';
+    const sceneVoice = voice !== cfg.tts.voice ? ` · ${voiceLabel(voice)}` : '';
+    log('tts', `${sc.id} ${sec.toFixed(1)}s${withVtt ? ' +vtt' : ''} (${usedProxy || '直连'})${fixed}${sceneVoice} ${sc.title}`);
   }
 
   writeDurations(cfg, durations);

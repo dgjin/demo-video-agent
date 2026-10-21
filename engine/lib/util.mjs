@@ -20,14 +20,25 @@ export function probeDuration(file) {
   return parseFloat(out);
 }
 
-/** PATH 中是否存在可执行文件 */
+/** PATH 中是否存在可执行文件（Windows 用 where） */
 export function hasBinary(bin) {
   try {
-    exec('which', [bin]);
+    exec(process.platform === 'win32' ? 'where' : 'which', [bin], { stdio: ['ignore', 'ignore', 'ignore'] });
     return true;
   } catch {
     return false;
   }
+}
+
+/** 各平台依赖安装提示 */
+export function installHint(bin) {
+  if (bin === 'ffmpeg' || bin === 'ffprobe') {
+    if (process.platform === 'darwin') return 'brew install ffmpeg';
+    if (process.platform === 'win32') return 'winget install Gyan.FFmpeg（或到 ffmpeg.org 下载）';
+    return 'sudo apt install ffmpeg（或使用发行版包管理器）';
+  }
+  if (bin === 'edge-tts') return 'pip install edge-tts';
+  return `请安装 ${bin}`;
 }
 
 /**
@@ -46,3 +57,4 @@ export const fmt = (n) => `${n.toFixed(1)}s`;
 export function log(tag, msg) {
   console.log(`[${tag}] ${msg}`);
 }
+

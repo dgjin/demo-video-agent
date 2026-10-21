@@ -1,31 +1,32 @@
 import { existsSync, renameSync, statSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
+import { runAssetScene } from './asset.mjs';
 import { selectScenes } from './config.mjs';
+import { ensurePlaywright } from './deps.mjs';
 import { readDurations } from './durations.mjs';
 import { bounded, ensureDir, log, probeDuration } from './util.mjs';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-
 /**
- * Playwright 解析顺序：被录制项目自身的依赖 > 插件自身依赖。
- * 这样插件可以直接复用目标项目已安装的 Playwright / 浏览器。
+ * Playwright 解析顺序：被录制项目自身的依赖 > 插件自身依赖（缺失时自动安装）。
+ * 保留此导出供 doctor 与外部调用。
  */
 export async function loadPlaywright(projectDir) {
-  const anchors = [join(projectDir, '__anchor.cjs'), join(HERE, '..', '..', '__anchor.cjs')];
-  for (const anchor of anchors) {
+  return ensurePlaywright(projectDir);
+}
+
+/** 启动浏览器：指定 channel 失败时回退 Playwright 内置 chromium，避免无 Chrome 环境直接失败 */
+async function launch(chromium, cfg) {
+  const base = { headless: cfg.browser.headless };
+  if (cfg.browser.channel) {
     try {
-      return createRequire(anchor)('playwright');
-    } catch {
-      /* 继续尝试下一个锚点 */
+      return await chromium.launch({ ...base, channel: cfg.browser.channel });
+    } catch (e) {
+      const reason = String(e.message || e).split('\n')[0].slice(0, 160);
+      log('record', `channel=${cfg.browser.channel} 启动失败（${reason}），回退内置 chromium`);
     }
   }
-  try {
-    return await import('playwright');
-  } catch {
-    throw new Error('缺少 playwright：在插件目录执行 npm install，或在被录制项目中安装 playwright');
-  }
+  return chromium.launch(base);
 }
 
 const step = (msg) => console.log(`[record] ${msg}`);
@@ -184,7 +185,7 @@ async function prepareAuth(cfg, chromium, statePath) {
     throw new Error('存在需要登录态的幕：请在 config.auth 提供 login(page)，或放置已有 storageState 文件');
   }
   log('record', '准备登录态…');
-  const browser = await chromium.launch({ channel: cfg.browser.channel, headless: cfg.browser.headless });
+  const browser = await launch(chromium, cfg);
   const context = await browser.newContext({ viewport: cfg.viewport });
   const page = await context.newPage();
   try {
@@ -203,7 +204,7 @@ async function recordScene(cfg, chromium, sc, targetMs, opts) {
   const tmpDir = join(cfg.paths.videos, '.tmp');
   ensureDir(tmpDir);
 
-  const browser = await chromium.launch({ channel: cfg.browser.channel, headless: cfg.browser.headless });
+  const browser = await launch(chromium, cfg);
   const context = await browser.newContext({
     viewport: cfg.viewport,
     ...(opts.noRecord ? {} : { recordVideo: { dir: tmpDir, size: cfg.viewport } }),
@@ -237,7 +238,7 @@ async function recordScene(cfg, chromium, sc, targetMs, opts) {
       ]);
       if (result === TIMEOUT) step(`${sc.id} 场景函数超时（>${(targetMs / 1000) | 0}+120s），关闭浏览器中止`);
     } else {
-      throw new Error(`${sc.id} 需要 overlay 或 run()`);
+      throw new Error(`${sc.id} 需要 overlay、run() 或 asset`);
     }
 
     const remain = targetMs - (Date.now() - t0);
@@ -278,15 +279,20 @@ async function recordScene(cfg, chromium, sc, targetMs, opts) {
  * opts: { scenes?: string[], dry?: boolean, noRecord?: boolean }
  *   dry      每幕固定 8s（DUR 彩排），不要求先跑 TTS
  *   noRecord 只跑操作链不录视频（替代原 NOREC）
+ * 素材幕（sc.asset）不经浏览器：纯素材项目无需安装 playwright。
  */
 export async function runRecord(cfg, opts = {}) {
-  const { chromium } = await loadPlaywright(cfg.projectDir);
   const scenes = selectScenes(cfg, opts.scenes);
   const durations = opts.dry ? {} : readDurations(cfg);
   ensureDir(cfg.paths.videos);
 
   const statePath = cfg.auth?.storageState ? join(cfg.projectDir, cfg.auth.storageState) : '';
   const needAuth = scenes.some((s) => s.auth);
+  const needBrowser = needAuth || scenes.some((s) => !s.asset);
+  // 浏览器仅在存在 overlay/run 幕或需要登录态时加载（缺 playwright 时 asset 幕仍可出片）
+  const chromium = needBrowser ? (await loadPlaywright(cfg.projectDir)).chromium : null;
+  if (!needBrowser) log('record', `全部 ${scenes.length} 幕为素材幕，跳过浏览器`);
+
   if (needAuth && !opts.dry && !opts.noRecord) {
     if (!statePath) throw new Error('存在 auth:true 的幕，但 config.auth.storageState 未配置');
     if (!existsSync(statePath)) await prepareAuth(cfg, chromium, statePath);
@@ -298,13 +304,21 @@ export async function runRecord(cfg, opts = {}) {
     if (!opts.dry && !targetMs) {
       throw new Error(`缺少 ${sc.id} 的 TTS 时长：先运行 demo-video tts --scenes ${sc.id}`);
     }
+    if (sc.asset) {
+      if (opts.dry || opts.noRecord) {
+        log('record', `${sc.id} 素材幕跳过${opts.dry ? '（DRY）' : '（NOREC）'}`);
+        continue;
+      }
+      runAssetScene(cfg, sc, targetMs);
+      continue;
+    }
     try {
       await recordScene(cfg, chromium, sc, targetMs, { ...opts, statePath });
     } catch (e) {
       if (!opts.noRecord && /Executable doesn't exist|ffmpeg/i.test(e.message)) {
         throw new Error(
           `${sc.id} 录制失败：${e.message}\n` +
-            '提示：Playwright 录屏依赖自带 ffmpeg，请在插件目录执行 npx playwright install ffmpeg',
+            '提示：Playwright 录屏依赖自带 ffmpeg，请运行 demo-video setup 或 npx playwright install ffmpeg',
         );
       }
       throw e;

@@ -7,6 +7,7 @@ my-demo/
   demo-video.config.mjs   # 配置（幕顺序、TTS、登录态、输出名）
   narration.md            # 分幕旁白（TTS 文本 + 时长来源）
   overlay/                # 纯展示幕 HTML（片头/片尾/过渡/导览）
+  assets/                 # 素材幕的源文件（真机录屏/实拍/截图，入库）
   audio/                  # 产物：<id>.mp3 <id>.vtt durations.json（vtt/durations 入库）
   videos/                 # 产物：<id>.webm（不入库）
   out/                    # 产物：<id>.mp4、成片、concat.txt（不入库）
@@ -30,16 +31,22 @@ export default {
     async login(page) { /* 可选：首次录制前自动登录 */ },
   },
   tts: {
-    voice: 'zh-CN-XiaoxiaoNeural',
+    role: 'warm',                        // 角色选音色：warm/lively/news/sunny/steady…
+    // gender: 'male',                   // 或只按性别选
+    // voice: 'zh-CN-XiaoxiaoNeural',    // 显式指定（优先级最高，任意 edge-tts voice）
     rate: '-4%',
     edgeTtsBin: '',                     // 留空自动探测
     proxy: ['http://127.0.0.1:7890'],   // 按顺序重试
-    fixes: [['一行', '一航']],           // 合成层同音替换，VTT 还原
+    defaultFixes: true,                 // 内置多音字词典，中文音色自动启用
+    fixes: [['一行命令', '一航命令']],   // 追加/覆盖内置词，等长同音替换
   },
   compose: { crf: 20, preset: 'medium', audioBitrate: '192k', sampleRate: 44100, padSeconds: 5 },
   scenes: [
     { id: 'm00', title: '片头', overlay: 'overlay/title.html' },
     { id: 'm1', title: '主界面', auth: true, async run(ctx) { /* ... */ } },
+    // 素材幕：视频导入 / 截图序列（二选一）
+    { id: 'm2', title: 'App 演示', asset: 'assets/app-demo.mp4' },
+    { id: 'm3', title: '界面走查', asset: ['assets/shot-01.png', 'assets/shot-02.png'], fit: 'contain' },
   ],
 };
 ```
@@ -47,29 +54,41 @@ export default {
 字段说明：
 
 - `scenes` 的顺序即成片顺序；`id` 必须与 `narration.md` 标题一致。
-- `overlay` 与 `run()` 二选一：前者是纯展示 HTML，后者是真实操作。
+- 画面源三选一：`overlay`（纯展示 HTML）、`run()`（真实操作）、`asset`（导入素材）。
+- `asset` 单个视频（mp4/webm/mov/gif）：自动适配画幅并去原声，短于旁白时冻帧补齐、超长裁尾；或图片数组（png/jpg…）：按该幕 VTT 句首自动切换，推荐一句一图，末图撑到幕尾。
+- `fit` 仅素材幕有效：`'contain'`（默认，等比居中留黑边）/ `'cover'`（裁切填满，适合竖屏录屏）。
+- 纯素材项目（所有幕都是 `asset`）不加载浏览器与 playwright，仅依赖 ffmpeg 与 edge-tts。
 - `auth: true` 的幕使用 `auth.storageState`；文件不存在且提供了 `login(page)` 时自动登录并保存。
-- `tts.fixes` 是 `[原文, 同音字]` 数组，只影响合成文本，VTT 自动还原原文。
+- `tts.role` / `tts.gender`：按角色或男女声选音色（`demo-video voices` 列出），`tts.voice` 显式指定时优先；单幕可在 scene 上写 `role` / `gender` / `voice` 覆盖。
+- `tts.defaultFixes` 默认 `true`：中文音色自动套用内置词典（命令行 / 重新 / 会计 / 角色…）；`fixes` 追加或覆盖，值为 `null` 关闭某条内置词。
+- `tts.fixes` 是 `[原文, 同音字]` 数组，**必须等长且同音同调**；只影响合成文本，VTT 按字符位置精确还原（不会误改原文里本来就有的同音字）。
+- `browser.channel` 默认 `chrome`；启动失败时自动回退 Playwright 内置 chromium。
 - `dirs` 可改为绝对路径（多项目共享素材时使用）。
 
 ## CLI
 
 | 命令 | 作用 | 关键参数 |
 | --- | --- | --- |
+| `setup` | 安装插件依赖（playwright + 录屏 ffmpeg） | `--link`（生成全局命令）`--force` |
 | `init <目录>` | 生成脚手架 | `--force` |
 | `doctor` | 依赖体检 | `--edge-tts <path>` `--config` |
 | `tts` | 生成 mp3/VTT/durations | `--scenes a,b` `--no-vtt` |
-| `record` | 分幕录屏 | `--scenes` `--dry`（每幕 8s）`--no-record`（只彩排） |
+| `record` | 分幕录屏 / 素材转码 | `--scenes` `--dry`（每幕 8s）`--no-record`（只彩排） |
 | `compose` | 合成并拼接 | — |
 | `frames` | 抽帧验收 | `--at 3,8` `--scene m1` `--width 1280` |
 | `all` | tts → record → compose | 支持以上全部 + `--at` 追加抽帧 |
 
-通用：`--config <path>`，默认 `./demo-video.config.mjs`。
+通用：`--config <path>`；省略时从当前目录向上查找 `demo-video.config.mjs`。
 
 环境变量：
 
+- `DV_HOME`：源码开发时指定插件根目录（安装副本不需要）。
+- `DV_CONFIG`：项目配置路径，优先于自动发现。
 - `DV_TTS_PROXY`：代理列表（逗号分隔），优先于配置。
 - `EDGE_TTS`：edge-tts 可执行文件路径。
+- `DV_PLAYWRIGHT`：自备 playwright 的 node_modules 所在目录。
+- `DV_NO_AUTO_INSTALL=1`：禁用插件目录的自动 npm install。
+- `DV_BIN_DIR`：`setup --link` 生成启动器的目录（默认 `~/.local/bin`）。
 - `DV_BASE_URL`：仅脚手架配置里引用，可自行扩展。
 
 ## 真实操作幕的 ctx 助手

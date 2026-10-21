@@ -9,3 +9,9 @@ examples/*/out/
 examples/*/diag/
 examples/*/*.mp4
 examples/*/.auth-state.json
+
+# 打包产物
+dist/
+
+# 本地临时文件
+.tmp/

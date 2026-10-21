@@ -1,6 +1,6 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ensureDir, exec, hasBinary, log, probeDuration } from './util.mjs';
+import { ensureDir, exec, hasBinary, installHint, log, probeDuration } from './util.mjs';
 
 /**
  * 音画合成：每幕 webm（无声）+ mp3（旁白）→ mp4，再 concat 拼接为成片。
@@ -8,7 +8,7 @@ import { ensureDir, exec, hasBinary, log, probeDuration } from './util.mjs';
  */
 export function runCompose(cfg) {
   for (const bin of ['ffmpeg', 'ffprobe']) {
-    if (!hasBinary(bin)) throw new Error(`缺少 ${bin}：请先安装 ffmpeg（brew install ffmpeg）`);
+    if (!hasBinary(bin)) throw new Error(`缺少 ${bin}：${installHint(bin)}`);
   }
   ensureDir(cfg.paths.out);
   const { crf, preset, audioBitrate, sampleRate, padSeconds } = cfg.compose;

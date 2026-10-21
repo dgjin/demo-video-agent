@@ -8,7 +8,14 @@
 - `calibration-and-pitfalls.md`：音画校准公式与踩坑记录（原理与边界条件）。
 - 插件根目录 `README.md`：能力概览与安装。
 
-约定：命令默认在**插件根目录**（`demo-video-agent/`）执行；`<项目>` 指你自己的演示项目目录，`<幕ID>` 指 `m0`、`m01`、`m8b` 之类。
+约定：先解析插件根目录 `DV_ROOT`，命令统一用绝对路径（不要假设当前目录是插件根目录）；`<项目>` 指你自己的演示项目目录，`<幕ID>` 指 `m0`、`m01`、`m8b` 之类。
+
+```bash
+DV_ROOT="${DV_HOME:-$(ls -d "$HOME/.qoder/plugins/cache"/*/demo-video-agent/* 2>/dev/null | while read -r p; do echo "$(basename "$p") $p"; done | sort -V | tail -1 | cut -d' ' -f2-)}"
+echo "$DV_ROOT"   # 为空说明插件未安装/未启用；源码开发时可用 export DV_HOME="$PWD"
+```
+
+安装过 `setup --link` 后，可将命令中的 `node "$DV_ROOT/engine/cli.mjs"` 换成 `demo-video`。
 
 ---
 
@@ -34,35 +41,38 @@
 ### 1.2 安装插件依赖
 
 ```bash
-npm install                      # 安装 playwright
-npx playwright install ffmpeg    # 录屏依赖它自带的 ffmpeg，缺失时 record 会直接失败
+node "$DV_ROOT/engine/cli.mjs" setup   # 安装 playwright 与录屏 ffmpeg（等价于 npm install + npx playwright install ffmpeg）
 ```
+
+插件安装副本不带 `node_modules`，`setup` 或首次 `record` 会自动安装；`DV_NO_AUTO_INSTALL=1` 可禁用自动安装。
 
 ### 1.3 体检
 
 ```bash
-node engine/cli.mjs doctor
+node "$DV_ROOT/engine/cli.mjs" doctor
 ```
 
-预期输出七行，全部为 `✓`：
+预期输出九行，除 `config` 外均为 `✓`：
 
 ```text
+✓ plugin     demo-video-agent v0.3.0 · ~/.qoder/plugins/cache/local/demo-video-agent/0.3.0
 ✓ node       22.x
 ✓ ffmpeg     可执行
 ✓ ffprobe    可执行
-✓ edge-tts   /Users/<user>/Library/Python/3.12/bin/edge-tts
-✓ playwright 模块可用（首次录制会自动使用本机 Chrome）
-✓ pw-ffmpeg  /Users/<user>/Library/Caches/ms-playwright/ffmpeg-1013
+✓ edge-tts   ~/Library/Python/3.12/bin/edge-tts
+✓ playwright 模块可用（channel 不可用时自动回退内置 chromium）
+✓ pw-ffmpeg  ~/Library/Caches/ms-playwright/ffmpeg-1013
 · config     未找到 .../demo-video.config.mjs（init 后可检查）
+✓ voice      zh-CN-XiaoxiaoNeural（温暖女声）
 ```
 
-- 最后一行 `· config` 是提示项，不影响退出码；进入具体项目后加 `--config` 复查。
-- `✗` 表示硬性缺失，按右列提示安装。`pw-ffmpeg` 缺失只影响录屏，不影响 TTS 与合成。
-- edge-tts 装在用户目录未进 `PATH` 也能被自动探测（`~/Library/Python/*/bin`、`~/.local/bin`、Homebrew 路径）；仍找不到时用 `--edge-tts /绝对路径` 或环境变量 `EDGE_TTS`。
+- 最后一行 `· config` 是提示项，不影响退出码；进入具体项目后配置会从当前目录向上自动查找，也可加 `--config` 复查。
+- `✗` 表示硬性缺失，按右列提示安装；多数项可用 `setup` 一键修复。`pw-ffmpeg` 缺失只影响录屏，不影响 TTS 与合成。
+- edge-tts 装在用户目录未进 `PATH` 也能被自动探测（macOS `~/Library/Python/*/bin`、Linux `~/.local/bin`、Windows `%APPDATA%\Python\*\Scripts`）；仍找不到时用 `--edge-tts /绝对路径` 或环境变量 `EDGE_TTS`。
 
 ```bash
-node engine/cli.mjs doctor --config ../my-demo/demo-video.config.mjs
-node engine/cli.mjs doctor --edge-tts /usr/local/bin/edge-tts
+node "$DV_ROOT/engine/cli.mjs" doctor --config ../my-demo/demo-video.config.mjs
+node "$DV_ROOT/engine/cli.mjs" doctor --edge-tts /usr/local/bin/edge-tts
 ```
 
 ### 1.4 环境变量
@@ -81,7 +91,7 @@ node engine/cli.mjs doctor --edge-tts /usr/local/bin/edge-tts
 # 网络需要代理时
 export DV_TTS_PROXY=http://127.0.0.1:7890
 
-node engine/cli.mjs all --config examples/hello-video/demo-video.config.mjs --at 2,6,10
+node "$DV_ROOT/engine/cli.mjs" all --config "$DV_ROOT/examples/hello-video/demo-video.config.mjs" --at 2,6,10
 ```
 
 预期：
@@ -100,7 +110,7 @@ node engine/cli.mjs all --config examples/hello-video/demo-video.config.mjs --at
 ### 2.1 初始化
 
 ```bash
-node engine/cli.mjs init ../my-demo
+node "$DV_ROOT/engine/cli.mjs" init ../my-demo
 ```
 
 目标目录已存在且非空时会拒绝；确认要覆盖时加 `--force`。生成内容：
@@ -188,7 +198,7 @@ m10 片尾：优势、环境、技术栈、致谢
 每幕以二级标题开头：
 
 ```markdown
-## <幕ID> · <幕名>（约 Xs）
+## m03 · 多轮问数（约 26s）
 
 第一句旁白。第二句旁白。第三句旁白。
 ```
@@ -215,7 +225,7 @@ m10 片尾：优势、环境、技术栈、致谢
 ```markdown
 ## m00 · 片头（约 12s）
 
-欢迎观看智能问数系统演示。本视频中的所有数据均为演示数据，不涉及任何真实业务信息。
+欢迎观看示例系统演示。本视频中的所有数据均为演示数据，不涉及任何真实业务信息。
 
 ## m1 · 主界面（约 40s）
 
@@ -263,12 +273,13 @@ export default {
   },
 
   tts: {
-    voice: 'zh-CN-XiaoxiaoNeural',
+    role: 'warm',        // 角色：warm / lively / news / sunny / steady / youth…（demo-video voices）
+    // gender: 'male',   // 或只按性别选；voice 显式指定时优先级最高
     rate: '-4%',
     proxy: process.env.DV_TTS_PROXY ? process.env.DV_TTS_PROXY.split(',') : [],
+    defaultFixes: true,   // 内置词典：命令行 / 重新 / 会计 / 角色…
     fixes: [
-      ['一行', '一航'],
-      ['行数', '航数'],
+      ['一行命令', '一航命令'],   // 追加：必须等长、同音同调
     ],
   },
 
@@ -300,9 +311,12 @@ export default {
 | `browser.channel` | `chrome` | 复用本机 Chrome；可改 `chromium` 并安装对应浏览器 |
 | `browser.headless` | `true` | 需要观察录制过程时设 `false` |
 | `auth.storageState` | 无 | 相对项目根，登录态 JSON |
-| `tts.voice` | `zh-CN-XiaoxiaoNeural` | edge-tts 音色 |
+| `tts.voice` | 空（按 role/gender 解析） | 任意 edge-tts voice id；显式指定时优先级最高 |
+| `tts.role` | `warm` | 角色选音色：warm/lively/news/sunny/steady/youth/dongbei/shaanxi |
+| `tts.gender` | 空 | `male` / `female`（也接受 男 / 女），未指定角色时生效 |
 | `tts.rate` | `-4%` | 语速，负值更慢 |
-| `tts.fixes` | `[]` | `[原文, 同音字]` 数组，只改合成文本 |
+| `tts.defaultFixes` | `true` | 内置多音字词典，仅中文音色生效 |
+| `tts.fixes` | `[]` | 追加/覆盖内置词，`[原文, 同音字]` 等长数组，只改合成文本 |
 | `compose.crf` | 20 | 18 更清晰、体积更大；暗色渐变多时建议 18 |
 | `compose.padSeconds` | 5 | tpad 冻帧上限，需大于正常的视频-音频差 |
 
@@ -335,13 +349,13 @@ export default {
 
 ```bash
 # 全量：文稿中所有幕
-node engine/cli.mjs tts --config ../my-demo/demo-video.config.mjs
+node "$DV_ROOT/engine/cli.mjs" tts --config ../my-demo/demo-video.config.mjs
 
 # 单幕重生成（改了一句旁白时）
-node engine/cli.mjs tts --config ../my-demo/demo-video.config.mjs --scenes m5
+node "$DV_ROOT/engine/cli.mjs" tts --config ../my-demo/demo-video.config.mjs --scenes m5
 
 # 不生成 VTT（仅配音，不推荐，后续无法校准）
-node engine/cli.mjs tts --config ../my-demo/demo-video.config.mjs --no-vtt
+node "$DV_ROOT/engine/cli.mjs" tts --config ../my-demo/demo-video.config.mjs --no-vtt
 ```
 
 产物：
@@ -361,7 +375,7 @@ VTT 是句子级 cue，格式：
 WEBVTT
 
 00:00:00.100 --> 00:00:03.240
-欢迎观看智能问数系统演示。
+欢迎观看示例系统演示。
 
 00:00:03.300 --> 00:00:06.800
 本视频中的所有数据均为演示数据。
@@ -371,17 +385,35 @@ WEBVTT
 - overlay 的 `--d` = 句首 + 0.3–0.6s；真实操作 `at()` = 句首 + 0.8–1.0s。
 - 详细公式与边界见 `calibration-and-pitfalls.md`。
 
-### 6.3 多音字修正
+### 6.3 音色选择（男声 / 女声 / 角色）
 
-1. 试听发现读错（典型：数据语境的「行」被读成 xíng）。
-2. 在 `tts.fixes` 加同音替换：`['行数', '航数']`、`['一行', '一航']`。
-3. 重生成该幕：`tts --scenes m1`。
-4. 确认 `audio/m1.txt` 中是替换后的字，`audio/m1.vtt` 中已还原成原文（引擎自动还原字幕）。
-5. 重新录制该幕。
+三种写法，优先级 `voice` > `role` > `gender`，都不写就是「温暖女声」：
 
-注意替换要尽量具体（带上下文词），避免全局替换误伤正常读音。
+| 写法 | 示例 | 效果 |
+| --- | --- | --- |
+| 角色 | `role: 'news'` | 新闻男声（zh-CN-YunyangNeural） |
+| 性别 | `gender: 'male'` | 男声默认档（新闻男声） |
+| 音色 | `voice: 'zh-CN-YunxiNeural'` | 任意 edge-tts voice，含英文/日文 |
 
-### 6.4 常见错误
+- 角色清单：`demo-video voices`；只看男声加 `--gender male`。
+- 临时换人试听：`demo-video tts --role steady --scenes m00`（不改配置）。
+- 单幕换人：在 `config.scenes` 对应幕写 `role` / `gender` / `voice`，其余幕不受影响。
+- 改音色会改变整幕时长，必须重跑 `tts` 并重新校准该幕 overlay 的 `--d`。
+
+### 6.4 多音字修正
+
+引擎内置读音词典（`engine/lib/pronunciation.mjs`）：中文音色在合成前把易错词换成同音字，
+字幕再按字符位置还原原文。命令行、重新、会计、角色、下载、渲染这类高频词无需任何配置。
+
+1. 仍读错时，在 `tts.fixes` 追加等长、同音同调的替换，如 `['重载', '崇载']`。
+2. 关掉某条内置词写 `['处理', null]`；整体关闭用 `tts: { defaultFixes: false }`。
+3. 重生成该幕：`tts --scenes m1`，日志会打印「读音修正 N 处」。
+4. 确认 `audio/m1.txt` 是替换后的字、`audio/m1.vtt` 已还原原文，再重录该幕。
+
+键要带上下文（写「一行命令」而不是「一行」），否则会误伤「一行人」这类正常读音；
+长度不等的条目会被引擎丢弃。
+
+### 6.5 常见错误
 
 | 现象 | 原因 | 处理 |
 | --- | --- | --- |
@@ -391,7 +423,7 @@ WEBVTT
 | VTT 与旁白句数不一致 | 句子缺标点或过长 | 补句号、拆分长句后重生成 |
 | 字幕里出现替换字 | 手工改过 VTT | 重生成该幕，让引擎重新还原 |
 
-### 6.5 检查点
+### 6.6 检查点
 
 - [ ] 每幕 `durations.json` 有值且 > 0；
 - [ ] 试听片头、片尾与关键操作幕，发音、语速可接受；
@@ -542,10 +574,10 @@ WEBVTT
 
 ```bash
 # 每幕固定 8s，只验证脚本能跑通、选择器有效（不要求先 TTS）
-node engine/cli.mjs record --config ... --dry
+node "$DV_ROOT/engine/cli.mjs" record --config ... --dry
 
 # 按真实时长跑完整操作链，不产出视频（需要先 TTS）
-node engine/cli.mjs record --config ... --no-record
+node "$DV_ROOT/engine/cli.mjs" record --config ... --no-record
 ```
 
 彩排日志关注：`click[xxx] ok`、`hover[xxx] ok`、无 `bbox=null`、无 `run 异常`。彩排通过不代表正式录制一定顺利，正式模式关闭/补齐开销更大，仍需按 9.3 的判据观察。
@@ -566,16 +598,16 @@ node engine/cli.mjs record --config ... --no-record
 
 ```bash
 # 正式录制全部幕
-node engine/cli.mjs record --config ../my-demo/demo-video.config.mjs
+node "$DV_ROOT/engine/cli.mjs" record --config ../my-demo/demo-video.config.mjs
 
 # 重录单幕
-node engine/cli.mjs record --config ... --scenes m5
+node "$DV_ROOT/engine/cli.mjs" record --config ... --scenes m5
 
 # 每幕 8s 彩排（不产出可用成片素材）
-node engine/cli.mjs record --config ... --dry
+node "$DV_ROOT/engine/cli.mjs" record --config ... --dry
 
 # 只跑操作链，不录视频
-node engine/cli.mjs record --config ... --no-record
+node "$DV_ROOT/engine/cli.mjs" record --config ... --no-record
 ```
 
 每幕独立浏览器实例；单幕异常不影响其他幕。录制视频先落在 `videos/.tmp/`，结束后重命名为 `videos/<幕ID>.webm`。
@@ -604,7 +636,7 @@ node engine/cli.mjs record --config ... --no-record
 # 终止挂起的录制（在另一个终端）
 pkill -f "engine/cli.mjs record"
 rm -f videos/.tmp/*.webm videos/<幕ID>.webm
-node engine/cli.mjs record --config ... --scenes <幕ID>
+node "$DV_ROOT/engine/cli.mjs" record --config ... --scenes <幕ID>
 ```
 
 ### 9.4 登录态
@@ -627,7 +659,7 @@ node engine/cli.mjs record --config ... --scenes <幕ID>
 ### 10.1 合成
 
 ```bash
-node engine/cli.mjs compose --config ../my-demo/demo-video.config.mjs
+node "$DV_ROOT/engine/cli.mjs" compose --config ../my-demo/demo-video.config.mjs
 ```
 
 日志示例：
@@ -648,13 +680,13 @@ node engine/cli.mjs compose --config ../my-demo/demo-video.config.mjs
 
 ```bash
 # 成片绝对时间
-node engine/cli.mjs frames --config ... --at 5,30,120
+node "$DV_ROOT/engine/cli.mjs" frames --config ... --at 5,30,120
 
 # 某幕内相对时间（自动加上前置各幕时长）
-node engine/cli.mjs frames --config ... --scene m5 --at 1,8,20
+node "$DV_ROOT/engine/cli.mjs" frames --config ... --scene m5 --at 1,8,20
 
 # 缩小尺寸便于快速查看
-node engine/cli.mjs frames --config ... --scene m5 --at 8 --width 1280
+node "$DV_ROOT/engine/cli.mjs" frames --config ... --scene m5 --at 8 --width 1280
 ```
 
 输出到 `diag/frame-*.png`。超出成片时长的点会被跳过并给出警告。
@@ -706,7 +738,7 @@ node engine/cli.mjs frames --config ... --scene m5 --at 8 --width 1280
 | 画面某侧长期空白 | 内容入场太晚 | 外框/标题提前，内容按旁白逐条点亮 |
 | 查询过程过快/消失 | 服务端缓存命中 | 录制前走缓存失效入口，结果后加停留 |
 | 旁白与操作错位 | 按字数估算时间 | 重读 VTT，按句首 + 0.8–1.0s 校准 |
-| TTS 读错字 | 多音字 | `tts.fixes` 加同音替换，重生成并核对 VTT |
+| TTS 读错字 | 多音字 | 先用内置词典（默认开启）；仍错则 `tts.fixes` 追加等长同音替换，重生成并核对 VTT |
 | TTS 连续失败 | 网络/代理 | 配置 `DV_TTS_PROXY`，多写几个代理 |
 | 合成报缺少素材 | 某幕未录或未生成音频 | 补跑 `tts` / `record --scenes <幕>` |
 | `frames` 没有输出 | 时间点超出成片时长 | 用 `--scene` 相对时间，或确认成片时长 |
@@ -755,16 +787,19 @@ node engine/cli.mjs frames --config ... --scene m5 --at 8 --width 1280
 ### 14.1 命令速查
 
 ```bash
-node engine/cli.mjs init <目录> [--force]
-node engine/cli.mjs doctor [--config <cfg>] [--edge-tts <path>]
+node "$DV_ROOT/engine/cli.mjs" setup    [--link] [--force]
+node "$DV_ROOT/engine/cli.mjs" init <目录> [--force]
+node "$DV_ROOT/engine/cli.mjs" doctor [--config <cfg>] [--edge-tts <path>]
 
-node engine/cli.mjs tts     --config <cfg> [--scenes a,b] [--no-vtt]
-node engine/cli.mjs record  --config <cfg> [--scenes a,b] [--dry] [--no-record]
-node engine/cli.mjs compose --config <cfg>
-node engine/cli.mjs frames  --config <cfg> --at 3,8 [--scene m1] [--width 1280]
+node "$DV_ROOT/engine/cli.mjs" tts     --config <cfg> [--scenes a,b] [--no-vtt]
+node "$DV_ROOT/engine/cli.mjs" record  --config <cfg> [--scenes a,b] [--dry] [--no-record]
+node "$DV_ROOT/engine/cli.mjs" compose --config <cfg>
+node "$DV_ROOT/engine/cli.mjs" frames  --config <cfg> --at 3,8 [--scene m1] [--width 1280]
 
-node engine/cli.mjs all     --config <cfg> [--scenes a,b] [--dry] [--no-record] [--at 3,8]
+node "$DV_ROOT/engine/cli.mjs" all     --config <cfg> [--scenes a,b] [--dry] [--no-record] [--at 3,8]
 ```
+
+`--config` 省略时从当前目录向上查找 `demo-video.config.mjs`（也可用 `DV_CONFIG` 指定）。
 
 `--scenes` 只影响 `tts` 与 `record`；`compose` 始终全量重编码。
 

@@ -1,0 +1,93 @@
+/* demo-video-agent 介绍片 · overlay 共享样式
+ * 约定：.stage 容器 + body.playing 触发动画 + --delta 抵消加载耗时 + #veil 遮蔽首帧。
+ */
+:root {
+  --delta: 0s;
+  --bg: #05080e;
+  --panel: #0b1220;
+  --panel2: #0e1728;
+  --line: rgba(148, 163, 184, 0.16);
+  --fg: #e9eefb;
+  --dim: #8b9bb5;
+  --dimmer: #5f6f89;
+  --accent: #38bdf8;
+  --accent2: #818cf8;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.stage { position: relative; width: 100%; height: 100%; overflow: hidden; }
+
+/* 背景层：细网格 + 双色光晕 */
+.grid-bg {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.055) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(1200px 760px at 50% 42%, #000 0%, transparent 82%);
+  mask-image: radial-gradient(1200px 760px at 50% 42%, #000 0%, transparent 82%);
+}
+.glow { position: absolute; border-radius: 50%; filter: blur(140px); pointer-events: none; }
+.glow-a { width: 720px; height: 520px; left: -120px; top: -140px; background: rgba(56, 189, 248, 0.16); }
+.glow-b { width: 760px; height: 560px; right: -160px; bottom: -180px; background: rgba(129, 140, 248, 0.14); }
+
+/* 入场动画 */
+.anim { opacity: 0; transform: translateY(18px); }
+body.playing .anim {
+  animation: rise 0.85s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  animation-delay: calc(var(--d, 0s) - var(--delta));
+}
+@keyframes rise { to { opacity: 1; transform: none; } }
+
+.fade { opacity: 0; }
+body.playing .fade {
+  animation: fadein 0.7s ease forwards;
+  animation-delay: calc(var(--d, 0s) - var(--delta));
+}
+@keyframes fadein { to { opacity: 1; } }
+
+/* 页眉：左侧栏目名，右侧幕编号 */
+.head {
+  position: absolute; left: 120px; top: 84px; right: 120px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.kicker {
+  display: inline-flex; align-items: center; gap: 14px;
+  font-size: 19px; letter-spacing: 5px; color: var(--dim); text-transform: uppercase;
+}
+.kicker::before {
+  content: ""; width: 26px; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+.scene-no { font-family: var(--mono); font-size: 18px; letter-spacing: 2px; color: var(--dimmer); }
+h1.title { font-size: 54px; font-weight: 650; letter-spacing: 1px; line-height: 1.2; }
+.sub { font-size: 22px; color: var(--dim); letter-spacing: 1px; }
+
+/* 通用卡片 */
+.card {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(16, 25, 42, 0.92), rgba(10, 16, 28, 0.92));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+.mono { font-family: var(--mono); }
+
+/* 首帧残影遮蔽：0.35s 后开始、0.6s 淡出，覆盖实测残影窗口又不过度压暗幕首 */
+#veil {
+  position: fixed; inset: 0; background: var(--bg);
+  z-index: 99; pointer-events: none; opacity: 1;
+  transition: opacity 0.6s ease 0.35s;
+}
+body.playing #veil { opacity: 0; }
+
+/* 展示幕隐藏仿真光标 */
+.dv-cursor { display: none !important; }

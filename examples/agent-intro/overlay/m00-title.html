@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>m00 · 片头</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  .hero {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 30px; padding-bottom: 40px;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 14px;
+    padding: 12px 28px; border-radius: 999px;
+    border: 1px solid rgba(56, 189, 248, .3);
+    background: rgba(56, 189, 248, .07);
+    font-size: 18px; letter-spacing: 4px; color: #9fd8f7;
+    font-family: var(--mono);
+  }
+  .badge i {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--ok);
+    box-shadow: 0 0 0 4px rgba(52, 211, 153, .14);
+  }
+  body.playing .badge i { animation: pulse 2.2s ease-in-out infinite .8s; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(52, 211, 153, .14); opacity: 1; }
+    50% { box-shadow: 0 0 0 9px rgba(52, 211, 153, .04); opacity: .72; }
+  }
+  h1 {
+    font-size: 112px; font-weight: 700; letter-spacing: 6px; line-height: 1.1;
+    background: linear-gradient(100deg, #eaf6ff 0%, #7dd3fc 38%, #a5b4fc 72%, #eaf6ff 100%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  body.playing h1 { animation: rise .9s cubic-bezier(.2,.7,.2,1) forwards, sheen 7s linear 1.2s infinite; }
+  @keyframes sheen { 0% { background-position: 0% 0; } 100% { background-position: 220% 0; } }
+  .lead { font-size: 30px; letter-spacing: 5px; color: var(--dim); }
+  .flow { display: flex; align-items: center; gap: 18px; margin-top: 34px; }
+  .flow .item {
+    padding: 12px 26px; border-radius: 12px;
+    border: 1px solid var(--line); background: rgba(13, 21, 36, .8);
+    font-size: 20px; letter-spacing: 2px; color: #c6d3e8;
+  }
+  .flow .item.hl { border-color: rgba(56, 189, 248, .38); color: #bfe9ff; }
+  .flow .sep { color: var(--dimmer); font-size: 18px; }
+  .sig {
+    position: absolute; bottom: 70px; left: 0; right: 0; text-align: center;
+    font-family: var(--mono); font-size: 17px; letter-spacing: 3px; color: var(--dimmer);
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="grid-bg"></div>
+  <div class="glow glow-a"></div>
+  <div class="glow glow-b"></div>
+
+  <div class="hero">
+    <div class="badge anim" style="--d:0.45s"><i></i>QODER PLUGIN · V0.2.2</div>
+    <h1 class="anim" style="--d:0.9s">演示视频 Agent</h1>
+    <p class="lead anim" style="--d:3.98s">写清楚要讲什么，剩下的交给流水线</p>
+    <div class="flow">
+      <span class="item anim" style="--d:6.86s">文稿</span>
+      <span class="sep anim" style="--d:6.96s">→</span>
+      <span class="item anim" style="--d:7.06s">配音</span>
+      <span class="sep anim" style="--d:7.16s">→</span>
+      <span class="item anim" style="--d:7.26s">录屏</span>
+      <span class="sep anim" style="--d:7.36s">→</span>
+      <span class="item hl anim" style="--d:7.46s">合成</span>
+      <span class="sep anim" style="--d:7.56s">→</span>
+      <span class="item hl anim" style="--d:7.66s">验收</span>
+    </div>
+  </div>
+
+  <div class="sig anim" style="--d:8.66s">narration.md → mp3 + vtt → webm → mp4</div>
+</div>
+<div id="veil"></div>
+</body>
+</html>

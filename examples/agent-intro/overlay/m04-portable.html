@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>m04 · 通用化设计</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  .head-left { display: flex; flex-direction: column; gap: 18px; }
+
+  .side { position: absolute; left: 120px; top: 320px; width: 480px; }
+  .side .lead { font-size: 25px; line-height: 1.7; letter-spacing: 1px; color: #cddbef; }
+  .side .lead b { color: #7dd3fc; font-weight: 550; }
+  .code {
+    margin-top: 28px; padding: 24px 26px; border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, .2);
+    background: #070c15;
+    font-family: var(--mono); font-size: 14.5px; line-height: 27px;
+    color: #b9c8dd; white-space: pre;
+  }
+  .code .v { color: #7dd3fc; }
+  .code .e { color: #c4b5fd; }
+  .code .c { color: #4d6076; }
+  .side .cap {
+    margin-top: 18px; font-size: 17px; line-height: 1.7; color: var(--dimmer); letter-spacing: 1px;
+  }
+  .side .cap b { color: #8fa3c8; font-weight: 500; }
+
+  .grid { position: absolute; left: 640px; top: 300px; width: 1160px; display: flex; flex-wrap: wrap; gap: 36px 40px; }
+  .cell {
+    width: 560px; height: 224px; padding: 30px 34px;
+    display: flex; flex-direction: column; gap: 10px; position: relative;
+  }
+  .cell .no {
+    position: absolute; right: 30px; top: 28px;
+    font-family: var(--mono); font-size: 14px; color: var(--dimmer); letter-spacing: 2px;
+  }
+  .cell h2 { font-size: 27px; font-weight: 600; letter-spacing: 2px; }
+  .cell .k {
+    align-self: flex-start; margin-top: 2px;
+    font-family: var(--mono); font-size: 13.5px; letter-spacing: .5px; color: #7dd3fc;
+    padding: 4px 11px; border-radius: 7px;
+    background: rgba(56, 189, 248, .08); border: 1px solid rgba(56, 189, 248, .2);
+  }
+  .cell p { margin-top: auto; font-size: 17.5px; line-height: 1.65; color: var(--dim); }
+  .cell p b { color: #c6d6ea; font-weight: 500; }
+  .cell::before {
+    content: ""; position: absolute; left: 0; top: 32px; bottom: 32px; width: 2px;
+    border-radius: 2px; background: linear-gradient(180deg, var(--accent), transparent);
+    opacity: .55;
+  }
+
+  .foot {
+    position: absolute; left: 120px; right: 120px; bottom: 132px;
+    display: flex; align-items: center; justify-content: center; gap: 22px;
+    font-size: 20px; letter-spacing: 2px; color: #a9bad2;
+  }
+  .foot .line { width: 120px; height: 1px; background: linear-gradient(90deg, transparent, rgba(148,163,184,.4)); }
+  .foot .line.r { transform: scaleX(-1); }
+  .foot b { color: #dbe9fb; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="grid-bg"></div>
+  <div class="glow glow-a"></div>
+  <div class="glow glow-b"></div>
+
+  <div class="head">
+    <div class="head-left">
+      <div class="kicker anim" style="--d:0.2s">Portability</div>
+      <h1 class="title anim" style="--d:0.45s">换台机器，换个项目，照样能跑</h1>
+    </div>
+    <div class="scene-no anim" style="--d:0.3s">05 / 07</div>
+  </div>
+
+  <div class="side">
+    <p class="lead anim" style="--d:0.9s">没有任何一条路径，<br>写死在代码里。</p>
+    <div class="code anim" style="--d:1.4s"><span class="c"># 取已安装的最新版本</span>
+<span class="v">DV_ROOT</span>="${<span class="e">DV_HOME</span>:-$(ls -d \
+  "$HOME/.qoder/plugins/cache"/*/demo-video-agent/* \
+  | sort -V | tail -1)}"</div>
+    <p class="cap anim" style="--d:4.02s">插件从<b>自身安装路径</b>推导根目录。<br>源码开发时用 <b>DV_HOME</b> 指向仓库。</p>
+  </div>
+
+  <div class="grid">
+    <div class="cell card anim" style="--d:1s">
+      <div class="no">01</div>
+      <h2 class="anim" style="--d:1.8s">自动定位</h2>
+      <span class="k anim" style="--d:1.95s">DV_ROOT / PLUGIN_ROOT</span>
+      <p class="anim" style="--d:2.1s">不管装在哪台机器、哪个版本目录，<b>运行时自己找到自己</b>。</p>
+    </div>
+
+    <div class="cell card anim" style="--d:1s">
+      <div class="no">02</div>
+      <h2 class="anim" style="--d:6.95s">依赖自举</h2>
+      <span class="k anim" style="--d:7.1s">auto install</span>
+      <p class="anim" style="--d:7.25s">安装副本不带 node_modules，<b>缺少 playwright 时自动安装</b>。</p>
+    </div>
+
+    <div class="cell card anim" style="--d:1s">
+      <div class="no">03</div>
+      <h2 class="anim" style="--d:8.25s">配置发现</h2>
+      <span class="k anim" style="--d:8.4s">findConfig()</span>
+      <p class="anim" style="--d:8.55s">从当前目录<b>向上查找</b> demo-video.config.mjs，子目录里也能跑。</p>
+    </div>
+
+    <div class="cell card anim" style="--d:1s">
+      <div class="no">04</div>
+      <h2 class="anim" style="--d:12.29s">跨平台适配</h2>
+      <span class="k anim" style="--d:12.44s">macOS · Linux · Windows</span>
+      <p class="anim" style="--d:12.59s">二进制用 <b>which / where</b> 探测，Chrome 不可用时<b>回退内置 chromium</b>。</p>
+    </div>
+  </div>
+
+  <div class="foot anim" style="--d:16.19s">
+    <span class="line"></span>
+    <span>安装即用 · <b>零路径硬编码</b></span>
+    <span class="line r"></span>
+  </div>
+</div>
+<div id="veil"></div>
+</body>
+</html>

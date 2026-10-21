@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>m06 · 片尾</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  .wrap {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 26px; padding-bottom: 30px;
+  }
+  .badge {
+    padding: 10px 24px; border-radius: 999px;
+    border: 1px solid rgba(52, 211, 153, .3);
+    background: rgba(52, 211, 153, .07);
+    font-family: var(--mono); font-size: 15px; letter-spacing: 4px; color: #86e0bf;
+  }
+  h1 {
+    font-size: 76px; font-weight: 700; letter-spacing: 5px; line-height: 1.15;
+    background: linear-gradient(100deg, #f2fbff, #a5d8f5 45%, #b7b9fb 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .cmd {
+    width: 1080px; height: 92px; margin-top: 12px;
+    display: flex; align-items: center; gap: 14px; padding: 0 34px;
+    border-radius: 16px;
+    border: 1px solid rgba(56, 189, 248, .34);
+    background: linear-gradient(180deg, rgba(14, 26, 44, .95), rgba(8, 14, 24, .95));
+    box-shadow: 0 28px 70px rgba(0, 0, 0, .45), 0 0 0 1px rgba(56, 189, 248, .06) inset;
+    font-family: var(--mono); font-size: 27px;
+  }
+  .cmd .slash { color: #38bdf8; }
+  .cmd .name { color: #eaf6ff; font-weight: 600; }
+  .cmd .arg { color: #93a8c2; font-size: 23px; margin-left: 6px; }
+  .cmd .caret {
+    width: 12px; height: 30px; border-radius: 2px; background: #38bdf8; margin-left: auto;
+  }
+  body.playing .cmd .caret { animation: blink 1.1s steps(1) infinite 2.2s; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .steps { display: flex; align-items: center; gap: 20px; margin-top: 22px; }
+  .step { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .step code {
+    padding: 9px 20px; border-radius: 9px;
+    border: 1px solid rgba(148, 163, 184, .22);
+    background: rgba(13, 21, 36, .8);
+    font-family: var(--mono); font-size: 17px; color: #7dd3fc;
+  }
+  .step span { font-size: 14px; letter-spacing: 1px; color: #6f839d; }
+  .arrow { color: #3f5068; font-size: 18px; margin-bottom: 26px; }
+
+  .sig {
+    margin-top: 52px; font-family: var(--mono); font-size: 16px;
+    letter-spacing: 2px; color: #5f7593;
+  }
+  .sig b { color: #9fd8f7; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="grid-bg"></div>
+  <div class="glow glow-a"></div>
+  <div class="glow glow-b"></div>
+
+  <div class="wrap">
+    <div class="badge anim" style="--d:0.5s">GET STARTED</div>
+    <h1 class="anim" style="--d:0.9s">开始你的第一条演示视频</h1>
+
+    <div class="cmd anim" style="--d:1.5s">
+      <span class="slash">/</span><span class="name">demo-video</span>
+      <span class="arg">帮我给项目做一个演示视频</span>
+      <span class="caret"></span>
+    </div>
+
+    <div class="steps">
+      <div class="step anim" style="--d:6.35s"><code>setup</code><span>安装依赖</span></div>
+      <span class="arrow anim" style="--d:6.45s">→</span>
+      <div class="step anim" style="--d:6.55s"><code>init</code><span>生成脚手架</span></div>
+      <span class="arrow anim" style="--d:6.65s">→</span>
+      <div class="step anim" style="--d:6.75s"><code>all</code><span>一条龙出片</span></div>
+    </div>
+
+    <div class="sig anim" style="--d:9.05s">本视频由 <b>demo-video-agent</b> 自动生成 · Qoder Plugin v0.2.2</div>
+  </div>
+</div>
+<div id="veil"></div>
+</body>
+</html>

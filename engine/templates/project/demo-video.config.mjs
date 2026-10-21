@@ -32,18 +32,21 @@ export default {
   },
 
   tts: {
-    voice: 'zh-CN-XiaoxiaoNeural',
+    // 音色三选一（优先级 voice > role > gender），都不写即默认「温暖女声」
+    // 角色清单：warm / lively / news / sunny / steady / youth / dongbei / shaanxi（demo-video voices）
+    role: '',
+    // gender: 'male',   // 只想按男女声选时填它
+    // voice: 'zh-CN-XiaoxiaoNeural',   // 任意 edge-tts voice，英文/日文也在这里换
     rate: '-4%',
     // 访问微软 TTS 需要代理时填写，按顺序重试；也可用环境变量 DV_TTS_PROXY=a,b
     proxy: process.env.DV_TTS_PROXY ? process.env.DV_TTS_PROXY.split(',') : [],
-    // 多音字读音修正：只改合成文本，字幕自动还原原文
-    // 例：数据语境「行」应读 háng，避免被读成 xíng
+    // 多音字：内置词典默认开启（命令行 / 重新 / 会计 / 角色…），中文音色自动生效
+    // 想整体关闭：defaultFixes: false
+    defaultFixes: true,
+    // 追加或覆盖内置词：必须等长、同音同调；值为 null 表示关闭该条
     fixes: [
-      ['一行', '一航'],
-      ['万行', '万航'],
-      ['行数', '航数'],
-      ['行级', '航级'],
-      ['行权限', '航权限'],
+      // ['重载', '崇载'],
+      // ['处理', null],
     ],
   },
 
@@ -51,12 +54,18 @@ export default {
     // 纯展示幕：overlay 指向 HTML 文件，页面需包含 .stage 容器与 body.playing 动画约定
     { id: 'm00', title: '片头', overlay: 'overlay/title.html' },
 
-    // 真实操作幕（示例，按需启用）：
-    // { id: 'm1', title: '主界面', auth: true, async run({ page, at, clickLoc, hoverText }) {
+    // 素材幕（App 真机录屏 / 实拍 / 渲染 / 截图序列）：不经浏览器，纯素材项目无需 playwright
+    // 单个视频自动适配画幅（fit: 'contain' 留黑边 | 'cover' 裁切填满）；
+    // 多张图片按该幕旁白的句首时刻自动切换，末图撑到幕尾
+    // { id: 'm1', title: 'App 演示', asset: 'assets/app-demo.mp4' },
+    // { id: 'm2', title: '界面走查', asset: ['assets/shot-01.png', 'assets/shot-02.png'] },
+
+    // 真实操作幕（示例，按需启用；选择器改成你自己系统的即可）：
+    // { id: 'm3', title: '主界面', auth: true, async run({ page, at, clickLoc, hoverText }) {
     //   await at(1.5);
-    //   await hoverText(page, '开始问数');
+    //   await hoverText(page, '开始演示');
     //   await at(4.0);
-    //   await clickLoc(page, page.getByRole('button', { name: '开始问数' }), 260, '开始问数');
+    //   await clickLoc(page, page.getByRole('button', { name: '开始演示' }), 260, '开始演示');
     // } },
 
     { id: 'm01', title: '片尾', overlay: 'overlay/outro.html' },

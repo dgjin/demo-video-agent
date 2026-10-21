@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>m05 · 抽帧验收</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  .head-left { display: flex; flex-direction: column; gap: 18px; }
+
+  .timeline {
+    position: absolute; left: 120px; right: 120px; top: 268px;
+    display: flex; gap: 7px;
+  }
+  .seg {
+    height: 68px; border-radius: 10px;
+    border: 1px solid rgba(56, 189, 248, .16);
+    background: linear-gradient(180deg, rgba(18, 38, 58, .9), rgba(10, 18, 30, .9));
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  }
+  .seg b { font-family: var(--mono); font-size: 16px; font-weight: 500; color: #9fd8f7; letter-spacing: 1px; }
+  .seg span { font-family: var(--mono); font-size: 12px; color: #5f7593; }
+  .tl-label {
+    position: absolute; right: 120px; top: 346px;
+    font-family: var(--mono); font-size: 13px; color: var(--dimmer); letter-spacing: 1px;
+  }
+
+  .shots {
+    position: absolute; left: 150px; top: 400px;
+    display: flex; gap: 30px;
+  }
+  .shot { width: 520px; }
+  .shot .frame {
+    position: relative; height: 190px; border-radius: 12px; overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, .22);
+    background: #070c15;
+  }
+  .shot .meta {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 12px; font-family: var(--mono); font-size: 13px; color: #6d829c;
+  }
+  .shot .meta b { color: #9fd8f7; font-weight: 500; }
+  .shot .meta .png {
+    font-size: 11px; letter-spacing: 1px; color: #5f7593;
+    border: 1px solid rgba(148, 163, 184, .22); border-radius: 5px; padding: 2px 7px;
+  }
+  .scan {
+    position: absolute; left: 0; right: 0; top: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(56, 189, 248, .85), transparent);
+  }
+  body.playing .scan {
+    animation: scan 2.6s linear infinite;
+    animation-delay: calc(var(--d, 4s) - var(--delta));
+  }
+  @keyframes scan {
+    0% { top: 0; opacity: 0; }
+    8% { opacity: 1; }
+    92% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+  .frame .corner {
+    position: absolute; width: 12px; height: 12px;
+    border-color: rgba(56, 189, 248, .6); border-style: solid; border-width: 0;
+  }
+  .frame .c1 { left: 12px; top: 12px; border-left-width: 1px; border-top-width: 1px; }
+  .frame .c2 { right: 12px; top: 12px; border-right-width: 1px; border-top-width: 1px; }
+  .frame .c3 { left: 12px; bottom: 12px; border-left-width: 1px; border-bottom-width: 1px; }
+  .frame .c4 { right: 12px; bottom: 12px; border-right-width: 1px; border-bottom-width: 1px; }
+
+  /* 缩略画面：片头 */
+  .mini-intro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+  .mini-intro .b { width: 92px; height: 7px; border-radius: 4px; background: rgba(56, 189, 248, .35); }
+  .mini-intro .h { width: 300px; height: 26px; border-radius: 6px; background: linear-gradient(90deg, #dbeafe, #38bdf8, #818cf8); opacity: .9; }
+  .mini-intro .s { width: 210px; height: 7px; border-radius: 4px; background: rgba(148, 163, 184, .3); }
+
+  /* 缩略画面：终端 */
+  .mini-term { position: absolute; left: 26px; right: 26px; top: 24px; display: flex; flex-direction: column; gap: 10px; }
+  .mini-term i { height: 7px; border-radius: 4px; background: rgba(148, 163, 184, .22); }
+  .mini-term i.g { background: rgba(52, 211, 153, .5); }
+  .mini-term i.w1 { width: 44%; }
+  .mini-term i.w2 { width: 68%; }
+  .mini-term i.w3 { width: 56%; }
+  .mini-term i.w4 { width: 76%; }
+  .mini-term .term-top {
+    display: flex; gap: 5px; margin-bottom: 4px;
+  }
+  .mini-term .term-top u { width: 7px; height: 7px; border-radius: 50%; background: #2b3a50; }
+
+  /* 缩略画面：片尾 */
+  .mini-outro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  .mini-outro .h { width: 250px; height: 16px; border-radius: 5px; background: rgba(233, 238, 251, .85); }
+  .mini-outro .cmd {
+    width: 330px; height: 34px; border-radius: 8px;
+    border: 1px solid rgba(56, 189, 248, .4); background: rgba(56, 189, 248, .1);
+    display: flex; align-items: center; padding: 0 14px;
+    font-family: var(--mono); font-size: 12px; color: #9fd8f7;
+  }
+  .mini-outro .sig { width: 190px; height: 6px; border-radius: 4px; background: rgba(148, 163, 184, .24); }
+
+  .log {
+    position: absolute; left: 120px; top: 706px;
+    font-family: var(--mono); font-size: 16px; color: #8298b3; letter-spacing: .3px;
+  }
+  .log b { color: #7dd3fc; font-weight: 500; }
+  .log .ok { color: var(--ok); }
+
+  .checks {
+    position: absolute; left: 120px; right: 120px; bottom: 118px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .check {
+    flex: 1; height: 62px; border-radius: 12px;
+    border: 1px solid rgba(52, 211, 153, .18);
+    background: rgba(12, 28, 24, .45);
+    display: flex; align-items: center; gap: 14px; padding: 0 22px;
+    font-size: 18px; color: #c5d9d0; letter-spacing: 1px;
+  }
+  .check b { color: var(--ok); font-size: 17px; }
+  .redo {
+    position: absolute; right: 120px; bottom: 202px;
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 20px; border-radius: 10px;
+    border: 1px dashed rgba(56, 189, 248, .35);
+    background: rgba(10, 18, 32, .8);
+    font-size: 16px; color: #a9cbe0;
+  }
+  .redo code { font-family: var(--mono); font-size: 14.5px; color: #7dd3fc; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="grid-bg"></div>
+  <div class="glow glow-a"></div>
+  <div class="glow glow-b"></div>
+
+  <div class="head">
+    <div class="head-left">
+      <div class="kicker anim" style="--d:0.2s">Verification</div>
+      <h1 class="title anim" style="--d:0.45s">交付前，先自己验收</h1>
+    </div>
+    <div class="scene-no anim" style="--d:0.3s">06 / 07</div>
+  </div>
+
+  <div class="timeline anim" style="--d:2.91s">
+    <div class="seg" style="flex:11.1"><b>m00</b><span>11.1s</span></div>
+    <div class="seg" style="flex:19.8"><b>m01</b><span>19.8s</span></div>
+    <div class="seg" style="flex:18.3"><b>m02</b><span>18.3s</span></div>
+    <div class="seg" style="flex:19.8"><b>m03</b><span>19.8s</span></div>
+    <div class="seg" style="flex:19.3"><b>m04</b><span>19.3s</span></div>
+    <div class="seg" style="flex:17.7"><b>m05</b><span>17.7s</span></div>
+    <div class="seg" style="flex:11.5"><b>m06</b><span>11.5s</span></div>
+  </div>
+  <div class="tl-label anim" style="--d:3.16s">total 117.4s · 7 scenes</div>
+
+  <div class="shots">
+    <div class="shot anim" style="--d:3.46s">
+      <div class="frame">
+        <div class="mini-intro"><div class="b"></div><div class="h"></div><div class="s"></div></div>
+        <div class="scan" style="--d:3.76s"></div>
+        <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
+      </div>
+      <div class="meta"><span><b>01.0s</b> · 首句开场</span><span class="png">PNG</span></div>
+    </div>
+
+    <div class="shot anim" style="--d:4.06s">
+      <div class="frame">
+        <div class="mini-term">
+          <div class="term-top"><u></u><u></u><u></u></div>
+          <i class="g w1"></i><i class="w2"></i><i class="g w3"></i><i class="w4"></i><i class="w2"></i>
+        </div>
+        <div class="scan" style="--d:4.36s"></div>
+        <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
+      </div>
+      <div class="meta"><span><b>60.0s</b> · 关键画面</span><span class="png">PNG</span></div>
+    </div>
+
+    <div class="shot anim" style="--d:4.66s">
+      <div class="frame">
+        <div class="mini-outro"><div class="h"></div><div class="cmd">/demo-video 帮我做一个演示视频</div><div class="sig"></div></div>
+        <div class="scan" style="--d:4.96s"></div>
+        <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
+      </div>
+      <div class="meta"><span><b>116.0s</b> · 末句收尾</span><span class="png">PNG</span></div>
+    </div>
+  </div>
+
+  <div class="log anim" style="--d:8.71s">
+    [record] m03 -&gt; video=<b>19.7s</b> audio=<b>19.8s</b> 2.9MB <span class="ok">maxGap=0.5s</span>
+  </div>
+
+  <div class="redo anim" style="--d:12.85s">
+    只重录这一幕 <code>record --scenes m05</code>
+  </div>
+
+  <div class="checks">
+    <div class="check anim" style="--d:3.76s"><b>✓</b> 首句开场已就位</div>
+    <div class="check anim" style="--d:3.86s"><b>✓</b> 关键画面与旁白一致</div>
+    <div class="check anim" style="--d:3.96s"><b>✓</b> 末句收尾无缺失</div>
+    <div class="check anim" style="--d:16s"><b>✓</b> 其余素材不用重跑</div>
+  </div>
+</div>
+<div id="veil"></div>
+</body>
+</html>

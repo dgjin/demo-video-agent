@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>m03 · 两种画面</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  .head-left { display: flex; flex-direction: column; gap: 18px; }
+
+  .panels { position: absolute; left: 120px; right: 120px; top: 292px; display: flex; gap: 80px; }
+  .panel { width: 800px; height: 500px; overflow: hidden; }
+  .ph {
+    height: 58px; display: flex; align-items: center; gap: 16px; padding: 0 26px;
+    border-bottom: 1px solid var(--line);
+  }
+  .tag {
+    font-family: var(--mono); font-size: 14px; letter-spacing: 1px; color: #7dd3fc;
+    padding: 5px 12px; border-radius: 8px;
+    background: rgba(56, 189, 248, .1); border: 1px solid rgba(56, 189, 248, .22);
+  }
+  .ph-name { font-size: 21px; letter-spacing: 2px; color: #dbe6f7; }
+  .ph-note { margin-left: auto; font-size: 15px; color: var(--dimmer); letter-spacing: 1px; }
+  .screen { position: relative; height: 442px; padding: 34px 36px; overflow: hidden; }
+
+  /* 左侧：展示页缩略 */
+  .mini-title { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 14px; }
+  .mini-badge {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 3px; color: #8ed9fb;
+    border: 1px solid rgba(56, 189, 248, .3); border-radius: 999px; padding: 5px 14px;
+    background: rgba(56, 189, 248, .07);
+  }
+  .mini-h1 { font-size: 38px; font-weight: 700; letter-spacing: 3px; color: #eaf6ff; }
+  .mini-lead { font-size: 14px; letter-spacing: 3px; color: #7f93ad; }
+  .mini-cards { display: flex; gap: 10px; margin-top: 22px; }
+  .mini-cards span {
+    position: relative; width: 152px; height: 74px; border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, .22);
+    background: rgba(16, 26, 44, .9);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; letter-spacing: 2px; color: #b9c8dd;
+  }
+  .mini-cards i {
+    position: absolute; inset: 0; border-radius: 10px; opacity: 0;
+    border: 1px solid rgba(56, 189, 248, .75);
+    background: rgba(56, 189, 248, .14);
+    box-shadow: inset 0 0 24px rgba(56, 189, 248, .2);
+  }
+  body.playing .mini-cards i {
+    animation: flash .9s ease forwards;
+    animation-delay: calc(var(--d) - var(--delta));
+  }
+  @keyframes flash {
+    0% { opacity: 0; }
+    30% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .mini-sig {
+    margin-top: 26px; font-family: var(--mono); font-size: 11px;
+    letter-spacing: 1px; color: #4d6076;
+  }
+  .cursor-demo {
+    position: absolute; right: 60px; bottom: 34px;
+    font-family: var(--mono); font-size: 11px; color: #47607d;
+  }
+
+  /* 右侧：真实操作缩略 */
+  .mini-app { padding: 0; }
+  .app-bar {
+    height: 36px; display: flex; align-items: center; gap: 7px; padding: 0 14px;
+    border-bottom: 1px solid rgba(148, 163, 184, .14); background: rgba(9, 15, 26, .9);
+  }
+  .app-bar i { width: 8px; height: 8px; border-radius: 50%; background: #2b3a50; }
+  .url {
+    margin-left: 10px; padding: 3px 12px; border-radius: 6px;
+    background: rgba(148, 163, 184, .08);
+    font-family: var(--mono); font-size: 10px; color: #6c7f97;
+  }
+  .app-body { position: relative; padding: 30px 36px; }
+  .app-h { font-size: 20px; letter-spacing: 1px; color: #dbe6f7; }
+  .app-sub { margin-top: 6px; font-size: 12px; color: #64788f; letter-spacing: 1px; }
+  .row { position: absolute; left: 36px; top: 128px; display: flex; gap: 18px; }
+  .btn {
+    width: 150px; height: 46px; border-radius: 10px;
+    border: 1px solid rgba(56, 189, 248, .34);
+    background: rgba(56, 189, 248, .12);
+    color: #bfe9ff; font-size: 15px; letter-spacing: 2px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  body.playing .btn { animation: armed .35s ease forwards; animation-delay: calc(14.23s - var(--delta)); }
+  @keyframes armed {
+    to { background: rgba(56, 189, 248, .32); border-color: rgba(56, 189, 248, .7); color: #ffffff; }
+  }
+  .field {
+    position: relative;
+    width: 470px; height: 46px; border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, .22);
+    background: rgba(10, 17, 30, .9);
+    display: flex; align-items: center; padding: 0 16px;
+    font-size: 15px; color: #cfdcef;
+  }
+  .field .ph-text {
+    position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+    color: #4d6076; font-size: 14px;
+  }
+  body.playing .field .ph-text { animation: hide .01s linear forwards; animation-delay: calc(12.21s - var(--delta)); }
+  @keyframes hide { to { opacity: 0; } }
+  .typed {
+    display: inline-block; width: 0; overflow: hidden; white-space: nowrap;
+    border-right: 2px solid #38bdf8;
+  }
+  body.playing .typed {
+    animation: type 1.5s steps(10) forwards;
+    animation-delay: calc(12.31s - var(--delta));
+  }
+  @keyframes type { to { width: 160px; } }
+  .result {
+    position: absolute; left: 36px; top: 206px; width: 692px; height: 92px;
+    display: flex; align-items: center; gap: 18px; padding: 0 24px;
+    border-radius: 12px; border: 1px solid rgba(52, 211, 153, .3);
+    background: rgba(16, 38, 32, .5);
+    opacity: 0; transform: translateY(10px) scale(.98);
+  }
+  body.playing .result {
+    animation: pop .55s cubic-bezier(.2, .8, .2, 1) forwards;
+    animation-delay: calc(14.91s - var(--delta));
+  }
+  @keyframes pop { to { opacity: 1; transform: none; } }
+  .result .tick {
+    width: 37px; height: 37px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(52, 211, 153, .16); color: var(--ok); font-size: 19px;
+  }
+  .result b { display: block; font-size: 17px; font-weight: 550; color: #d8f7ea; letter-spacing: 1px; }
+  .result span { display: block; margin-top: 4px; font-size: 12px; color: #7fa593; letter-spacing: 1px; }
+  .cursor {
+    position: absolute; left: -9px; top: -9px; width: 18px; height: 18px;
+    border-radius: 50%; border: 2px solid rgba(59, 130, 246, .95);
+    background: rgba(59, 130, 246, .28);
+    box-shadow: 0 0 0 5px rgba(59, 130, 246, .13);
+    opacity: 0;
+  }
+  body.playing .cursor {
+    animation: path 4.6s linear forwards;
+    animation-delay: calc(11.51s - var(--delta));
+  }
+  @keyframes path {
+    0%   { transform: translate(700px, 400px); opacity: 0; }
+    6%   { opacity: 1; }
+    22%  { transform: translate(439px, 187px) scale(1); }
+    44%  { transform: translate(439px, 187px) scale(1); }
+    60%  { transform: translate(111px, 187px) scale(1); }
+    64%  { transform: translate(111px, 187px) scale(.62); }
+    69%  { transform: translate(111px, 187px) scale(1); }
+    100% { transform: translate(300px, 330px); opacity: 0; }
+  }
+
+  .note {
+    position: absolute; left: 0; right: 0; bottom: 112px; text-align: center;
+    font-size: 20px; letter-spacing: 1px; color: #b7c6dc;
+  }
+  .note code {
+    font-family: var(--mono); font-size: 18px; color: #7dd3fc;
+    background: rgba(56, 189, 248, .09); padding: 3px 9px; border-radius: 6px;
+  }
+  .note .inner {
+    display: inline-flex; align-items: center; gap: 16px;
+    padding: 15px 30px; border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, .2);
+    background: rgba(8, 13, 23, .94);
+  }
+  .note .sep { width: 1px; height: 18px; background: var(--line); }
+  .note .dim { color: var(--dim); }
+  .note-b .inner { border-color: rgba(52, 211, 153, .24); }
+  .note-b .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="grid-bg"></div>
+  <div class="glow glow-a"></div>
+  <div class="glow glow-b"></div>
+
+  <div class="head">
+    <div class="head-left">
+      <div class="kicker anim" style="--d:0.2s">Storyboard</div>
+      <h1 class="title anim" style="--d:0.45s">两种画面，一套时间轴</h1>
+    </div>
+    <div class="scene-no anim" style="--d:0.3s">04 / 07</div>
+  </div>
+
+  <div class="panels">
+    <!-- 展示页 -->
+    <div class="panel card anim" style="--d:2.52s">
+      <div class="ph">
+        <span class="tag">01 · overlay</span>
+        <span class="ph-name">展示页</span>
+        <span class="ph-note">片头 / 架构图 / 总结</span>
+      </div>
+      <div class="screen">
+        <div class="mini-title">
+          <div class="mini-badge anim" style="--d:2.87s">DEMO VIDEO AGENT</div>
+          <div class="mini-h1 anim" style="--d:3.17s">演示视频流水线</div>
+          <div class="mini-lead anim" style="--d:3.47s">旁白驱动 · 分幕录屏</div>
+          <div class="mini-cards">
+            <span class="anim" style="--d:3.87s">文稿<i style="--d:7.64s"></i></span>
+            <span class="anim" style="--d:4.12s">配音<i style="--d:8.39s"></i></span>
+            <span class="anim" style="--d:4.37s">录屏<i style="--d:9.14s"></i></span>
+            <span class="anim" style="--d:4.62s">合成<i style="--d:9.89s"></i></span>
+          </div>
+          <div class="mini-sig anim" style="--d:4.97s">body.playing .anim { animation-delay: calc(var(--d) - var(--delta)); }</div>
+        </div>
+        <div class="cursor-demo anim" style="--d:5.37s">纯 HTML 页面 · 无需站点</div>
+      </div>
+    </div>
+
+    <!-- 真实操作 -->
+    <div class="panel card anim" style="--d:3.07s">
+      <div class="ph">
+        <span class="tag">02 · run(ctx)</span>
+        <span class="ph-name">真实操作</span>
+        <span class="ph-note">点击 / 输入 / 滚动</span>
+      </div>
+      <div class="screen mini-app" style="padding:0">
+        <div class="app-bar"><i></i><i></i><i></i><span class="url">127.0.0.1:3000</span></div>
+        <div class="app-body">
+          <div class="app-h">演示项目管理</div>
+          <div class="app-sub">所有数据均为演示数据</div>
+          <div class="row">
+            <div class="btn">开始演示</div>
+            <div class="field">
+              <span class="ph-text">描述要演示的内容…</span>
+              <span class="typed">给项目做一个演示视频</span>
+            </div>
+          </div>
+          <div class="result">
+            <div class="tick">✓</div>
+            <div>
+              <b>演示已生成</b>
+              <span>7 幕 · 117 秒 · 1920×1080</span>
+            </div>
+          </div>
+        </div>
+        <div class="cursor"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note note-a anim" style="--d:8.14s">
+    <div class="inner">
+      <span class="dim">展示页</span>
+      <span class="sep"></span>
+      <span><code>--d</code> = 旁白句首 + 0.3s</span>
+      <span class="sep"></span>
+      <span class="dim">逐条点亮</span>
+    </div>
+  </div>
+
+  <div class="note note-b fade" style="--d:16.25s">
+    <div class="inner">
+      <span class="dot"></span>
+      <span><code>at()</code> = 旁白句首 + 0.8s</span>
+      <span class="sep"></span>
+      <span class="dim">点击自带 0.9s 开销</span>
+    </div>
+  </div>
+</div>
+<div id="veil"></div>
+</body>
+</html>
