@@ -7,6 +7,8 @@
   "author": {
     "name": "dgjin"
   },
+  "homepage": "https://github.com/dgjin/demo-video-agent",
+  "repository": "https://github.com/dgjin/demo-video-agent.git",
   "license": "MIT",
   "logo": "./assets/avatar.svg",
   "keywords": [
